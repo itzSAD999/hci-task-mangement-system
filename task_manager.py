@@ -20,6 +20,12 @@ import customtkinter as ctk  # type: ignore[import-not-found]
 import calendar as cal_mod
 from datetime import datetime, timedelta
 from typing import Callable, Optional
+import os
+try:
+    from PIL import Image as _PILImage  # type: ignore[import-not-found]
+    _PIL_OK = True
+except ImportError:
+    _PIL_OK = False
 
 # ─────────────────────────  DESIGN SYSTEM (Consistency & Aesthetics)  ─────
 
@@ -1167,13 +1173,33 @@ class TaskFlowApp(ctk.CTk):
         for w in self.scroll.winfo_children(): w.destroy()
         filtered = self._get_filtered()
         if not filtered:
-            msg = "No tasks found for today." if self._filter == "today" else "No tasks scheduled."
-            ctk.CTkLabel(self.scroll, text=msg, font=ctk.CTkFont(size=14, slant="italic"), text_color=self._c["muted"]).pack(pady=60)
+            # ── Empty state: clipboard illustration + message ──
+            empty_fr = ctk.CTkFrame(self.scroll, fg_color="transparent")
+            empty_fr.pack(expand=True, pady=50)
+            # Load clipboard image if PIL is available
+            _img_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "clipboard.png")
+            if _PIL_OK and os.path.exists(_img_path):
+                try:
+                    pil_img = _PILImage.open(_img_path).resize((120, 120), _PILImage.LANCZOS)  # type: ignore[attr-defined]
+                    ctk_img = ctk.CTkImage(light_image=pil_img, dark_image=pil_img, size=(120, 120))
+                    ctk.CTkLabel(empty_fr, image=ctk_img, text="").pack(pady=(0, 14))
+                except Exception:
+                    pass
+            msg = "No tasks for today." if self._filter == "today" else (
+                  "No upcoming tasks." if self._filter == "upcoming" else "No tasks yet.")
+            ctk.CTkLabel(empty_fr, text=msg,
+                         font=ctk.CTkFont(size=15, slant="italic"),
+                         text_color=self._c["muted"]).pack()
+            hint = "Add a task above to get started!" if self._filter == "all" else ""
+            if hint:
+                ctk.CTkLabel(empty_fr, text=hint,
+                             font=ctk.CTkFont(size=11),
+                             text_color=self._c["muted"]).pack(pady=(4, 0))
             self._ctrls(); return
 
         for i, (ri, task) in enumerate(filtered):
             sel = (i == self._sel_idx)
-            card = ctk.CTkFrame(self.scroll, corner_radius=16, height=70, border_width=2 if sel else 1,
+            card = ctk.CTkFrame(self.scroll, corner_radius=16, height=76, border_width=2 if sel else 1,
                                 fg_color=self._c["nav_active_bg"] if sel else self._c["panel"],
                                 border_color=self._c["accent"] if sel else self._c["border"])
             card.pack(fill="x", pady=5, padx=4)
@@ -1189,7 +1215,39 @@ class TaskFlowApp(ctk.CTk):
             ctk.CTkLabel(card, text=ico, font=ctk.CTkFont(size=16),
                          text_color=self._c["accent"]).pack(side="left", padx=(12, 8))
 
-            # Task text + times
+            # ── RIGHT SIDE: pack before text_col so it always gets space ──
+            right_col = ctk.CTkFrame(card, fg_color="transparent")
+            right_col.pack(side="right", padx=(4, 12))
+
+            # Date badge (leftmost in right_col)
+            if task["date"]:
+                lb, bg, fg = _date_style(task["date"], self._c)
+                bfr = ctk.CTkFrame(right_col, fg_color=bg, corner_radius=10)
+                bfr.pack(side="left", padx=(0, 8))
+                ctk.CTkLabel(bfr, text=lb, font=ctk.CTkFont(size=10, weight="bold"),
+                             text_color=fg).pack(padx=8, pady=4)
+
+            # Edit button — amber, clearly visible on dark & light
+            btn_edit_card = ctk.CTkButton(
+                right_col, text="✏", width=34, height=34, corner_radius=8,
+                font=ctk.CTkFont(size=14, weight="bold"),
+                fg_color="#B45309", text_color="#FEF3C7", hover_color="#D97706",
+                command=lambda idx=i: self._edit(idx)
+            )
+            btn_edit_card.pack(side="left", padx=(0, 4))
+            ToolTip(btn_edit_card, "Edit Task")
+
+            # Delete button — red, clearly visible on dark & light
+            btn_del_card = ctk.CTkButton(
+                right_col, text="🗑", width=34, height=34, corner_radius=8,
+                font=ctk.CTkFont(size=14, weight="bold"),
+                fg_color="#B91C1C", text_color="#FEE2E2", hover_color="#DC2626",
+                command=lambda idx=i: self._delete_at(idx)
+            )
+            btn_del_card.pack(side="left")
+            ToolTip(btn_del_card, "Delete Task (Ctrl+Z to undo)")
+
+            # Task text + times — fills remaining space
             text_col = ctk.CTkFrame(card, fg_color="transparent")
             text_col.pack(side="left", fill="both", expand=True)
 
@@ -1210,35 +1268,7 @@ class TaskFlowApp(ctk.CTk):
                              font=ctk.CTkFont(size=10), text_color=self._c["muted"],
                              anchor="w").pack(anchor="w")
 
-            # ── Right-side: date badge + action icons ──
-            right_col = ctk.CTkFrame(card, fg_color="transparent")
-            right_col.pack(side="right", padx=(0, 10), pady=8)
-
-            # Inline Edit icon button
-            ctk.CTkButton(
-                right_col, text="✏", width=28, height=28, corner_radius=8,
-                font=ctk.CTkFont(size=12),
-                fg_color="#78350F", text_color="#FCD34D", hover_color="#92400E",
-                command=lambda idx=i: self._edit(idx)
-            ).pack(side="right", padx=(4, 0))
-
-            # Inline Delete icon button
-            ctk.CTkButton(
-                right_col, text="🗑", width=28, height=28, corner_radius=8,
-                font=ctk.CTkFont(size=12),
-                fg_color="#7F1D1D", text_color="#FCA5A5", hover_color="#991B1B",
-                command=lambda idx=i: self._delete_at(idx)
-            ).pack(side="right", padx=(4, 0))
-
-            # Date badge
-            if task["date"]:
-                lb, bg, fg = _date_style(task["date"], self._c)
-                bfr = ctk.CTkFrame(right_col, fg_color=bg, corner_radius=10)
-                bfr.pack(side="right", padx=(0, 4))
-                ctk.CTkLabel(bfr, text=lb, font=ctk.CTkFont(size=10, weight="bold"),
-                             text_color=fg).pack(padx=8, pady=3)
-
-            # Interaction bindings
+            # Interaction bindings on card body
             for w in [card, acc, text_col]:
                 w.bind("<Button-1>", lambda e, idx=i: self._on_card_click(idx))
                 w.bind("<Double-Button-1>", lambda e, idx=i: self._edit(idx))
