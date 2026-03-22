@@ -189,8 +189,11 @@ class CalendarPopup(ctk.CTkToplevel):
     def _pick(self, d: int): self._cb(f"{d:02d}/{self._month:02d}"); self.destroy()
     def _pick_today(self): n=datetime.now(); self._cb(f"{n.day:02d}/{n.month:02d}"); self.destroy()
 
+# Global tooltip singleton — ensures only ONE tooltip is visible at a time
+_ACTIVE_TIP: Optional["ToolTip"] = None
+
 class ToolTip:
-    """Auto-hiding tooltip (Efficiency — disappears after 3s or on leave)."""
+    """Single-instance tooltip (Efficiency — hides on leave, max one at a time)."""
     def __init__(self, widget: ctk.CTkBaseClass, text: str):
         self.widget = widget
         self.text = text
@@ -200,32 +203,38 @@ class ToolTip:
         self.widget.bind("<Leave>", lambda e: self.hide())
 
     def show(self):
+        global _ACTIVE_TIP
+        # Hide any other visible tooltip first
+        if _ACTIVE_TIP is not None and _ACTIVE_TIP is not self:
+            _ACTIVE_TIP.hide()
         if self.tip or not self.text:
             return
         try:
-            x = self.widget.winfo_rootx() + 25
-            y = self.widget.winfo_rooty() + self.widget.winfo_height() + 5
+            x = self.widget.winfo_rootx() + 20
+            y = self.widget.winfo_rooty() + self.widget.winfo_height() + 6
             self.tip = ctk.CTkToplevel(self.widget)
             if self.tip is not None:
                 self.tip.wm_overrideredirect(True)  # type: ignore[union-attr]
-                self.tip.geometry(f"+{x}+{y}")  # type: ignore[union-attr]
-                # Adapt colour to current theme (light vs dark)
+                self.tip.geometry(f"+{x}+{y}")       # type: ignore[union-attr]
+                # Adapt colours to current theme
                 is_dark = ctk.get_appearance_mode().lower() == "dark"
                 tip_bg   = "#1A1A2E" if is_dark else "#1F2937"
                 tip_text = "#F3F4F6" if is_dark else "#FFFFFF"
-                self.tip.configure(fg_color=tip_bg)  # type: ignore[union-attr]
-                lbl = ctk.CTkLabel(
+                self.tip.configure(fg_color=tip_bg)   # type: ignore[union-attr]
+                ctk.CTkLabel(
                     self.tip, text=self.text, text_color=tip_text,
                     font=ctk.CTkFont(size=11, weight="bold"),
                     corner_radius=8, padx=12, pady=6,
-                )
-                lbl.pack()
-                # Auto-hide after 3 seconds (Efficiency)
+                    wraplength=300,   # prevent mid-word splits
+                ).pack()
+                _ACTIVE_TIP = self
+                # Auto-hide after 3 s (Efficiency)
                 self._timer_id = self.widget.after(3000, self.hide)
         except Exception:
             pass
 
     def hide(self):
+        global _ACTIVE_TIP
         if self._timer_id:
             try:
                 self.widget.after_cancel(self._timer_id)
@@ -238,6 +247,8 @@ class ToolTip:
             except Exception:
                 pass
             self.tip = None
+        if _ACTIVE_TIP is self:
+            _ACTIVE_TIP = None
 
 class ClearConfirmPopup(ctk.CTkToplevel):
     """Modal confirmation for destructive actions (HCI Error Prevention)."""
@@ -681,8 +692,13 @@ class TaskFlowApp(ctk.CTk):
         row1 = ctk.CTkFrame(self.input_card, fg_color="transparent")
         row1.pack(fill="x", padx=20, pady=(20, 10))
         
-        self.ent_task = ctk.CTkEntry(row1, placeholder_text="Enter a task description...", height=48, 
-                                     corner_radius=12, border_width=2, font=ctk.CTkFont(size=15))
+        self.ent_task = ctk.CTkEntry(
+            row1, placeholder_text="Enter a task description...", height=48,
+            corner_radius=12, border_width=2, font=ctk.CTkFont(size=15),
+            fg_color=self._c["input_bg"], border_color=self._c["input_bd"],
+            text_color=self._c["text"],
+            placeholder_text_color=self._c["muted"]
+        )
         self.ent_task.pack(side="left", fill="x", expand=True, padx=(0, 12))
         self.ent_task.bind("<Return>", lambda e: self._add())
         self.ent_task.bind("<KeyRelease>", lambda e: self._upd_cc())
@@ -697,8 +713,13 @@ class TaskFlowApp(ctk.CTk):
         row2 = ctk.CTkFrame(self.input_card, fg_color="transparent")
         row2.pack(fill="x", padx=20, pady=(0, 20))
 
-        self.ent_date = ctk.CTkEntry(row2, placeholder_text="DD/MM", width=90, height=36, corner_radius=10,
-                                     font=ctk.CTkFont(size=12))
+        self.ent_date = ctk.CTkEntry(
+            row2, placeholder_text="DD/MM", width=90, height=36, corner_radius=10,
+            font=ctk.CTkFont(size=12),
+            fg_color=self._c["input_bg"], border_color=self._c["input_bd"],
+            text_color=self._c["text"],
+            placeholder_text_color=self._c["muted"]
+        )
         self.ent_date.pack(side="left", padx=(0, 8))
         self.ent_date.bind("<Return>", lambda e: self._add())
         
@@ -982,8 +1003,10 @@ class TaskFlowApp(ctk.CTk):
         self.greeting.configure(text_color=c["text"])
         self.sub_text.configure(text_color=c["text_sec"])
         self.input_card.configure(fg_color=c["panel"], border_color=c["border"])
-        self.ent_task.configure(fg_color=c["input_bg"], border_color=c["input_bd"], text_color=c["text"])
-        self.ent_date.configure(fg_color=c["input_bg"], border_color=c["input_bd"], text_color=c["text"])
+        self.ent_task.configure(fg_color=c["input_bg"], border_color=c["input_bd"],
+                                text_color=c["text"], placeholder_text_color=c["muted"])
+        self.ent_date.configure(fg_color=c["input_bg"], border_color=c["input_bd"],
+                                text_color=c["text"], placeholder_text_color=c["muted"])
         self.scroll.configure(fg_color=c["bg"])
         self.scroll_nav.configure(fg_color=c["panel"])
         # Update unified scroll rail widgets
