@@ -426,47 +426,76 @@ class EditTaskPopup(ctk.CTkToplevel):
     def __init__(self, parent: ctk.CTk, palette: dict[str, str], task: dict[str, str], callback: Callable[[str, str], None]):
         super().__init__(parent) # type: ignore
         self.title("Edit Task")
-        self.geometry("460x360")
+        self.geometry("480x400")
         self.resizable(False, False)
         self.transient(parent)
         self.grab_set()
-        
+
         self._c = palette
         self._cb = callback
         self.configure(fg_color=palette["panel"])
-        
-        ctk.CTkLabel(self, text="✏️  Edit Task", font=ctk.CTkFont(size=20, weight="bold"), text_color=palette["text"]).pack(pady=(35, 20))
-        
-        # Task Input
-        self.ent_task = ctk.CTkEntry(self, width=380, height=50, corner_radius=12, font=ctk.CTkFont(size=14),
-                                     fg_color=palette["input_bg"], border_color=palette["input_bd"], text_color=palette["text"])
-        self.ent_task.pack(pady=5)
+
+        # ─ Header ──────────────────────────────────────────
+        ctk.CTkLabel(self, text="✏️  Edit Task",
+                     font=ctk.CTkFont(size=22, weight="bold"),
+                     text_color=palette["text"]).pack(pady=(30, 4))
+        ctk.CTkLabel(self, text="Make your changes below and click  Save  when done.",
+                     font=ctk.CTkFont(size=12), text_color=palette["text_sec"]).pack(pady=(0, 18))
+
+        # ─ Divider ────────────────────────────────────────
+        ctk.CTkFrame(self, height=1, fg_color=palette["border"]).pack(fill="x", padx=40, pady=(0, 18))
+
+        # ─ Task Description Field ─────────────────────────
+        ctk.CTkLabel(self, text="Task Description",
+                     font=ctk.CTkFont(size=11, weight="bold"),
+                     text_color=palette["muted"], anchor="w").pack(anchor="w", padx=48, pady=(0, 3))
+        self.ent_task = ctk.CTkEntry(self, width=384, height=50, corner_radius=12,
+                                     font=ctk.CTkFont(size=14),
+                                     fg_color=palette["input_bg"],
+                                     border_color=palette["input_bd"],
+                                     text_color=palette["text"])
+        self.ent_task.pack(pady=(0, 4))
         self.ent_task.insert(0, task["text"])
         self.ent_task.focus_set()
-        
-        # Date Input Row
+        self.ent_task.bind("<Return>", lambda e: self._save())
+
+        # Validation hint
+        self.lbl_hint = ctk.CTkLabel(self, text="", font=ctk.CTkFont(size=10, slant="italic"),
+                                     text_color=palette["err"])
+        self.lbl_hint.pack(pady=(0, 4))
+
+        # ─ Deadline Field ──────────────────────────────
+        ctk.CTkLabel(self, text="Deadline  (DD/MM format or leave blank)",
+                     font=ctk.CTkFont(size=11, weight="bold"),
+                     text_color=palette["muted"], anchor="w").pack(anchor="w", padx=48, pady=(6, 3))
         date_fr = ctk.CTkFrame(self, fg_color="transparent")
-        date_fr.pack(pady=20)
-        
-        self.ent_date = ctk.CTkEntry(date_fr, placeholder_text="DD/MM", width=120, height=42, corner_radius=10,
-                                     fg_color=palette["input_bg"], border_color=palette["input_bd"], text_color=palette["text"])
-        self.ent_date.pack(side="left", padx=10)
+        date_fr.pack(pady=(0, 4))
+
+        self.ent_date = ctk.CTkEntry(date_fr, placeholder_text="DD/MM", width=130, height=42,
+                                     corner_radius=10, font=ctk.CTkFont(size=13),
+                                     fg_color=palette["input_bg"],
+                                     border_color=palette["input_bd"],
+                                     text_color=palette["text"])
+        self.ent_date.pack(side="left", padx=(0, 10))
         self.ent_date.insert(0, task["date"])
-        
-        ctk.CTkButton(date_fr, text="📅 Picker", width=100, height=42, corner_radius=10,
-                      fg_color=palette["accent_soft"], text_color=palette["accent"],
-                      command=self._open_cal).pack(side="left", padx=10)
-        
-        # Action Buttons
+
+        ctk.CTkButton(date_fr, text="📅  Pick Date", width=120, height=42, corner_radius=10,
+                      font=ctk.CTkFont(size=12, weight="bold"),
+                      fg_color="#1E3A5F", text_color="#93C5FD", hover_color="#1E4976",
+                      command=self._open_cal).pack(side="left")
+
+        # ─ Action Buttons ─────────────────────────────
         btn_row = ctk.CTkFrame(self, fg_color="transparent")
-        btn_row.pack(pady=(15, 35))
-        
-        ctk.CTkButton(btn_row, text="Save Changes", width=160, height=48, corner_radius=12,
-                      fg_color=palette["accent"], hover_color=palette["accent_h"], font=ctk.CTkFont(weight="bold"),
+        btn_row.pack(pady=(20, 30))
+
+        ctk.CTkButton(btn_row, text="✔  Save Changes", width=170, height=48, corner_radius=12,
+                      font=ctk.CTkFont(size=14, weight="bold"),
+                      fg_color="#14532D", text_color="#86EFAC", hover_color="#166534",
                       command=self._save).pack(side="left", padx=10)
-                      
-        ctk.CTkButton(btn_row, text="Cancel", width=100, height=48, corner_radius=12,
-                      fg_color="transparent", text_color=palette["text_sec"], 
+
+        ctk.CTkButton(btn_row, text="Cancel", width=110, height=48, corner_radius=12,
+                      font=ctk.CTkFont(size=13),
+                      fg_color="#2D2D3E", text_color="#A0A0C0", hover_color="#3A3A55",
                       command=self.destroy).pack(side="left", padx=10)
 
         self._center_window()
@@ -485,7 +514,14 @@ class EditTaskPopup(ctk.CTkToplevel):
 
     def _save(self):
         txt, dt = self.ent_task.get().strip(), self.ent_date.get().strip()
-        if not txt: return
+        if not txt:
+            self.lbl_hint.configure(text="⚠ Task description cannot be empty.")
+            self.ent_task.configure(border_color=self._c["err"])
+            return
+        if dt and not _parse_date(dt):
+            self.lbl_hint.configure(text="⚠ Invalid date. Use DD/MM format (e.g. 25/06).")
+            self.ent_date.configure(border_color=self._c["err"])
+            return
         self._cb(txt, dt)
         self.destroy()
 
@@ -887,17 +923,19 @@ class TaskFlowApp(ctk.CTk):
         self._c = DARK if self._is_dark else LIGHT
         ctk.set_appearance_mode("dark" if self._is_dark else "light")
         self.mode_btn.configure(text="☀️  Light Mode" if self._is_dark else "🌙  Dark Mode")
-        
-        # Smooth transition animation
-        steps = 8
+
+        # Smooth eased transition: 16 steps @ 30ms = ~480ms total
+        steps = 16
         for i in range(1, steps + 1):
-            t = i / steps
-            self.after(i * 25, lambda f=t: self._animate_step(old_c, self._c, f))
-        
-        self.after((steps + 1) * 25, lambda: (self._apply_theme(), self._refresh()))
+            # Cubic ease-in-out: t^2 * (3 - 2t)
+            raw = i / steps
+            t = raw * raw * (3 - 2 * raw)
+            self.after(i * 30, lambda f=t: self._animate_step(old_c, self._c, f))
+
+        self.after((steps + 1) * 30, lambda: (self._apply_theme(), self._refresh()))
 
     def _animate_step(self, c1: dict[str, str], c2: dict[str, str], f: float):
-        def _interp(k: str):
+        def _interp(k: str) -> str:
             h1: str = str(c1[k])
             h2: str = str(c2[k])
             rgb1 = (int(h1[1:3], 16), int(h1[3:5], 16), int(h1[5:7], 16))  # type: ignore[index]
@@ -905,17 +943,35 @@ class TaskFlowApp(ctk.CTk):
             res = tuple(max(0, min(255, int(rgb1[j] + (rgb2[j] - rgb1[j]) * f))) for j in range(3))
             return '#%02x%02x%02x' % res
 
-        bg = _interp("bg")
-        side = _interp("sidebar")
-        pan = _interp("panel")
-        
-        self.configure(fg_color=bg)
-        self.side.configure(fg_color=side)
-        self.side_hdr.configure(fg_color=side)
-        self.main.configure(fg_color=bg)
-        self.scroll.configure(fg_color=bg)
-        self.input_card.configure(fg_color=pan)
-        self.status_bar.configure(fg_color=pan)
+        try:
+            bg   = _interp("bg")
+            side = _interp("sidebar")
+            pan  = _interp("panel")
+            brd  = _interp("border")
+            txt  = _interp("text")
+            tsec = _interp("text_sec")
+            acc  = _interp("accent_soft")
+
+            self.configure(fg_color=bg)
+            self.side.configure(fg_color=side)
+            self.side_hdr.configure(fg_color=side)
+            self.main.configure(fg_color=bg)
+            self.scroll.configure(fg_color=bg)
+            self.input_card.configure(fg_color=pan, border_color=brd)
+            self.status_bar.configure(fg_color=pan, border_color=brd)
+            self.greeting.configure(text_color=txt)
+            self.sub_text.configure(text_color=tsec)
+            self.status_lbl.configure(text_color=tsec)
+            self.ent_task.configure(fg_color=_interp("input_bg"), border_color=_interp("input_bd"),
+                                    text_color=txt)
+            self.ent_date.configure(fg_color=_interp("input_bg"), border_color=_interp("input_bd"),
+                                    text_color=txt)
+            self.scroll_nav.configure(fg_color=pan)
+            # Nav buttons
+            for btn in self.nav_btns.values():
+                btn.configure(fg_color=acc)
+        except Exception:
+            pass
 
     def _apply_theme(self):
         c = self._c
