@@ -352,7 +352,7 @@ class UserGuidePopup(ctk.CTkToplevel):
              "• Use the sidebar to filter: Today (1), Upcoming (2), All (3).\n"
              "• Collapse the sidebar with Ctrl+S for a wider view.\n"
              "• Click a task card to select it, double-click to edit.",
-             "Shortcut: Press E to edit, Del to remove a selected task."),
+             "Shortcut: Press Ctrl+E to edit, Del to remove a selected task."),
             ("⌨️  Master Power Shortcuts",
              "Ctrl+Z  →  Undo last delete\n"
              "Ctrl+T  →  Toggle Dark/Light mode\n"
@@ -694,8 +694,8 @@ class TaskFlowApp(ctk.CTk):
         self.bind("<Control-P>", lambda e: self._open_cal())
         self.bind("<Control-x>", lambda e: self._show_clear_dialog())
         self.bind("<Control-X>", lambda e: self._show_clear_dialog())
-        self.bind("e", lambda e: self._edit())
-        self.bind("E", lambda e: self._edit())
+        self.bind("<Control-e>", lambda e: self._edit())
+        self.bind("<Control-E>", lambda e: self._edit())
 
     def _init_layout(self):
         # 1. SIDEBAR PANEL (Structure & Continuity)
@@ -884,6 +884,7 @@ class TaskFlowApp(ctk.CTk):
                                      hover_color="#991B1B",
                                      command=self._delete)
         self.btn_del.pack(side="left", padx=(0, 8))
+        ToolTip(self.btn_del, "Delete Task (Del)")
 
         self.btn_edit = ctk.CTkButton(self.action_fr, text="✏️  Edit", height=44, corner_radius=12,
                                       font=ctk.CTkFont(size=14, weight="bold"),
@@ -891,6 +892,7 @@ class TaskFlowApp(ctk.CTk):
                                       hover_color="#92400E",
                                       command=self._edit)
         self.btn_edit.pack(side="left", padx=(0, 8))
+        ToolTip(self.btn_edit, "Edit Task (Ctrl+E)")
 
         self.btn_undo = ctk.CTkButton(self.action_fr, text="↩  Undo", height=44, corner_radius=12,
                                       font=ctk.CTkFont(size=14, weight="bold"),
@@ -898,6 +900,7 @@ class TaskFlowApp(ctk.CTk):
                                       hover_color="#4C0A82",
                                       command=self._undo)
         self.btn_undo.pack(side="left", padx=(0, 8))
+        ToolTip(self.btn_undo, "Undo Delete (Ctrl+Z)")
 
         self.btn_clear = ctk.CTkButton(self.action_fr, text="🧹  Clear All", height=44, corner_radius=12,
                                        font=ctk.CTkFont(size=14, weight="bold"),
@@ -905,6 +908,7 @@ class TaskFlowApp(ctk.CTk):
                                        hover_color="#5A0A0A",
                                        command=self._show_clear_dialog)
         self.btn_clear.pack(side="right")
+        ToolTip(self.btn_clear, "Clear All (Ctrl+X)")
 
     # ═══════════════════  LOGIC HELPERS  ══════════════════════════════════
 
