@@ -899,8 +899,6 @@ class TaskFlowApp(ctk.CTk):
         self.input_card.configure(fg_color=c["panel"], border_color=c["border"])
         self.ent_task.configure(fg_color=c["input_bg"], border_color=c["input_bd"], text_color=c["text"])
         self.ent_date.configure(fg_color=c["input_bg"], border_color=c["input_bd"], text_color=c["text"])
-        self.btn_add.configure(fg_color=c["accent"], hover_color=c["accent_h"])
-        self.btn_toggle.configure(text_color=c["text"], hover_color=c["accent_soft"])
         self.scroll.configure(fg_color=c["bg"])
         self.scroll_nav.configure(fg_color=c["panel"])
         for child in self.scroll_nav.winfo_children():
@@ -911,10 +909,13 @@ class TaskFlowApp(ctk.CTk):
                     pass
         self.status_bar.configure(fg_color=c["panel"], border_color=c["border"])
         self.status_lbl.configure(text_color=c["text_sec"])
-        
-        self.mode_btn.configure(fg_color=c["accent_soft"], text_color=c["accent"], hover_color=c["nav_active_bg"])
-        self.guide_btn.configure(fg_color=c["accent_soft"], text_color=c["accent"], hover_color=c["nav_active_bg"])
-        self.btn_cal.configure(fg_color=c["accent_soft"], text_color=c["accent"], hover_color=c["nav_active_bg"])
+        # sidebar toggle only adjusts bg per theme, semantic text stays
+        self.btn_toggle.configure(
+            fg_color=c["sidebar"],
+            text_color=c["text_sec"],
+            hover_color=c["accent_soft"]
+        )
+        # NOTE: btn_add, btn_cal, guide_btn, mode_btn keep their semantic colors — do NOT override here
 
         self._refresh_nav()
         self._ctrls()
@@ -924,19 +925,35 @@ class TaskFlowApp(ctk.CTk):
         sel = self._sel_idx is not None
         can_undo = self.last_deleted is not None
         has_tasks = len(self.tasks) > 0
-        
-        self.btn_del.configure(state="normal" if sel else "disabled",
-                               fg_color=c["err"] if sel else c["accent_soft"],
-                               text_color="#FFFFFF" if sel else c["muted"])
-        self.btn_edit.configure(state="normal" if sel else "disabled",
-                                fg_color=c["accent"] if sel else c["accent_soft"],
-                                text_color="#FFFFFF" if sel else c["muted"])
-        self.btn_undo.configure(state="normal" if can_undo else "disabled",
-                                fg_color=c["accent"] if can_undo else c["accent_soft"],
-                                text_color="#FFFFFF" if can_undo else c["muted"])
-        self.btn_clear.configure(state="normal" if has_tasks else "disabled",
-                                 fg_color=c["err"] if has_tasks else c["accent_soft"],
-                                 text_color="#FFFFFF" if has_tasks else c["muted"])
+
+        # Delete — red when active, dimmed when disabled
+        self.btn_del.configure(
+            state="normal" if sel else "disabled",
+            fg_color="#7F1D1D" if sel else c["accent_soft"],
+            text_color="#FCA5A5" if sel else c["muted"],
+            hover_color="#991B1B" if sel else c["accent_soft"]
+        )
+        # Edit — amber when active, dimmed when disabled
+        self.btn_edit.configure(
+            state="normal" if sel else "disabled",
+            fg_color="#78350F" if sel else c["accent_soft"],
+            text_color="#FCD34D" if sel else c["muted"],
+            hover_color="#92400E" if sel else c["accent_soft"]
+        )
+        # Undo — purple when active, dimmed when disabled
+        self.btn_undo.configure(
+            state="normal" if can_undo else "disabled",
+            fg_color="#3B0764" if can_undo else c["accent_soft"],
+            text_color="#D8B4FE" if can_undo else c["muted"],
+            hover_color="#4C0A82" if can_undo else c["accent_soft"]
+        )
+        # Clear All — crimson when active, dimmed when disabled
+        self.btn_clear.configure(
+            state="normal" if has_tasks else "disabled",
+            fg_color="#450A0A" if has_tasks else c["accent_soft"],
+            text_color="#FDA4AF" if has_tasks else c["muted"],
+            hover_color="#5A0A0A" if has_tasks else c["accent_soft"]
+        )
 
     def _refresh_nav(self):
         c = self._c
