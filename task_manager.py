@@ -255,7 +255,7 @@ class ToolTip:
                 
                 _ACTIVE_TIP = self
                 # Auto-hide after 3 s
-                self._hide_job = self.widget.after(3000, self.hide)
+                self._hide_job = self.widget.after(3, self.hide)
         except Exception as e:
             pass
 
@@ -1211,7 +1211,7 @@ class TaskFlowApp(ctk.CTk):
             # ── Done Toggle Button (Visual & Interactive) ──
             # Premium checkmark toggle
             done_ico = "✔" if done else ""
-            done_fg = "white" if done else "transparent"
+            done_fg = "white" if done else self._c["muted"]
             done_bg = self._c["ok"] if done else "transparent"
             done_bd = self._c["ok"] if done else self._c["muted"]
             
