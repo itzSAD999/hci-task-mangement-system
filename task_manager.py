@@ -615,8 +615,8 @@ class TaskFlowApp(ctk.CTk):
         self.side_hdr.pack(fill="x", padx=20, pady=(40, 30))
         
         self.btn_toggle = ctk.CTkButton(self.side_hdr, text="✕", width=40, height=40, corner_radius=10,
-                                        font=ctk.CTkFont(size=18, weight="bold"), fg_color="#2D2D3E",
-                                        text_color="#A0A0C0", hover_color="#3A3A55",
+                                        font=ctk.CTkFont(size=18, weight="bold"), fg_color="#7F1D1D",
+                                        text_color="#FCA5A5", hover_color="#991B1B",
                                         command=self._toggle_sidebar)
         self.btn_toggle.pack(side="left")
 
@@ -998,11 +998,11 @@ class TaskFlowApp(ctk.CTk):
             pass
         self.status_bar.configure(fg_color=c["panel"], border_color=c["border"])
         self.status_lbl.configure(text_color=c["text_sec"])
-        # sidebar toggle only adjusts bg per theme, semantic text stays
+        # sidebar toggle stays red (semantic: close) through both themes
         self.btn_toggle.configure(
-            fg_color=c["sidebar"],
-            text_color=c["text_sec"],
-            hover_color=c["accent_soft"]
+            fg_color="#7F1D1D",
+            text_color="#FCA5A5",
+            hover_color="#991B1B"
         )
         # NOTE: btn_add, btn_cal, guide_btn, mode_btn keep their semantic colors — do NOT override here
 
