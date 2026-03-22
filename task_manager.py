@@ -552,11 +552,17 @@ class EditTaskPopup(ctk.CTkToplevel):
             text_color=palette["text"]
         )
         self.ent_start.pack(side="left", padx=(0, 6))
-        self.ent_start.insert(0, task.get("start_time", ""))
-
         ctk.CTkLabel(time_row, text="→", font=ctk.CTkFont(size=16),
                      text_color=palette["muted"]).pack(side="left", padx=4)
 
+        self.ent_due = ctk.CTkEntry(
+            time_row, placeholder_text="e.g.  17:00",
+            placeholder_text_color=palette["muted"],
+            width=130, height=40, corner_radius=10, font=ctk.CTkFont(size=13),
+            fg_color=palette["input_bg"], border_color=palette["input_bd"],
+            text_color=palette["text"]
+        )
+        self.ent_due.pack(side="left", padx=(4, 0))
         self.ent_due.insert(0, task.get("due_time", ""))
 
         # ─ Done status
@@ -917,8 +923,8 @@ class TaskFlowApp(ctk.CTk):
             if done: continue
             
             dt = _parse_date(t["date"]) if t["date"] else None
-            is_today = (not t["date"]) or (today_str == t["date"][:5] if len(t["date"]) >= 5 else today_str == t["date"])
-            is_future = dt is not None and dt > today
+            is_today = (dt is None and not t["date"]) or (dt is not None and dt.date() == today.date())
+            is_future = dt is not None and dt.date() > today.date()
             
             if self._filter == "all":
                 res.append((i, t))
@@ -1002,9 +1008,11 @@ class TaskFlowApp(ctk.CTk):
         idx = self._editing_idx
         if not isinstance(idx, int): return
         if idx >= len(self.tasks): return # Safety check
-        self.tasks[idx] = {"text": txt, "date": dt,
-                           "start_time": start_time, "due_time": due_time,
-                           "done": done}
+        self.tasks[idx].update({
+            "text": txt, "date": dt,
+            "start_time": start_time, "due_time": due_time,
+            "done": done
+        })
         self._status(f"Updated: {txt}", "ok")
         self._editing_idx = None
         self._refresh(); self._refresh_nav()
