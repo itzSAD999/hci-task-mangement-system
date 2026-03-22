@@ -1208,21 +1208,6 @@ class TaskFlowApp(ctk.CTk):
             acc = ctk.CTkFrame(card, width=5, corner_radius=3, fg_color=acc_color)
             acc.pack(side="left", fill="y", padx=(4, 0), pady=8)
 
-            # ── Done Toggle Button (Visual & Interactive) ──
-            # Premium checkmark toggle
-            done_ico = "✔" if done else ""
-            done_fg = "white" if done else self._c["muted"]
-            done_bg = self._c["ok"] if done else "transparent"
-            done_bd = self._c["ok"] if done else self._c["muted"]
-            
-            btn_done = ctk.CTkLabel(card, text=done_ico, width=28, height=28, corner_radius=14,
-                                     font=ctk.CTkFont(size=14, weight="bold"),
-                                     fg_color=done_bg, text_color=done_fg)
-            btn_done.pack(side="left", padx=(12, 12))
-            # Wrap in a frame or just bind directly for click-to-toggle
-            btn_done.bind("<Button-1>", lambda e, idx=i: self._toggle_done(idx))
-            ToolTip(btn_done, "Mark as " + ("Active" if done else "Completed"))
-
             # ── RIGHT SIDE (packed first) ──
             right_col = ctk.CTkFrame(card, fg_color="transparent")
             right_col.pack(side="right", padx=(4, 12))
@@ -1236,6 +1221,18 @@ class TaskFlowApp(ctk.CTk):
                 bfr.pack(side="left", padx=(0, 8))
                 ctk.CTkLabel(bfr, text=lb, font=ctk.CTkFont(size=10, weight="bold"),
                              text_color=fg).pack(padx=8, pady=4)
+
+            # Mark as Done button
+            btn_done_card = ctk.CTkButton(
+                right_col, text="↺" if done else "✔", width=34, height=34, corner_radius=8,
+                font=ctk.CTkFont(size=14, weight="bold"),
+                fg_color=self._c["border"] if done else "#065F46", 
+                text_color=self._c["muted"] if done else "#A7F3D0", 
+                hover_color=self._c["accent_soft"] if done else "#047857",
+                command=lambda idx=i: self._toggle_done(idx)
+            )
+            btn_done_card.pack(side="left", padx=(8, 4))
+            ToolTip(btn_done_card, "Mark as Active" if done else "Mark as Completed")
 
             # Edit button
             btn_edit_card = ctk.CTkButton(
@@ -1263,17 +1260,13 @@ class TaskFlowApp(ctk.CTk):
 
             # ── Task Text & Times ──
             text_col = ctk.CTkFrame(card, fg_color="transparent")
-            text_col.pack(side="left", fill="both", expand=True)
+            text_col.pack(side="left", fill="both", expand=True, padx=12)
 
             # Slanted & Muted if done
-            t_font = ctk.CTkFont(size=13, 
+            t_font = ctk.CTkFont(size=15, 
                                  weight="bold" if sel else "normal",
                                  slant="italic" if done else "roman")
             t_color = self._c["muted"] if done else self._c["text"]
-            
-            lbl_txt = ctk.CTkLabel(text_col, text=task["text"], font=t_font,
-                                   text_color=t_color, anchor="w")
-            lbl_txt.pack(anchor="w")
 
             # Show times
             times_str = ""
@@ -1283,7 +1276,12 @@ class TaskFlowApp(ctk.CTk):
                 times_str = f"▶ Start: {task['start_time']}"
             elif task.get("due_time"):
                 times_str = f"⏰ Due: {task['due_time']}"
-            
+
+            # Vertically center by pushing down with pady
+            lbl_txt = ctk.CTkLabel(text_col, text=task["text"], font=t_font,
+                                   text_color=t_color, anchor="w", justify="left")
+            lbl_txt.pack(anchor="w", pady=(20 if not times_str else 12, 2))
+
             if times_str:
                 ctk.CTkLabel(text_col, text=times_str,
                              font=ctk.CTkFont(size=10), 
