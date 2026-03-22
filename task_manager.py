@@ -531,8 +531,15 @@ class TaskFlowApp(ctk.CTk):
         
         # Scroll Nav tooltips
         for w in self.scroll_nav.winfo_children():
-            if hasattr(w, "cget") and w.cget("text") == "▲": ToolTip(w, "Scroll Up") # type: ignore
-            if hasattr(w, "cget") and w.cget("text") == "▼": ToolTip(w, "Scroll Down") # type: ignore
+            # Safely get the button label; customtkinter may raise ValueError for unsupported attributes
+            try:
+                txt = w.cget("text")
+            except Exception:
+                txt = None
+            if txt == "▲":
+                ToolTip(w, "Scroll Up")  # type: ignore
+            elif txt == "▼":
+                ToolTip(w, "Scroll Down")  # type: ignore
 
     def _bind_keys(self):
         self.bind("<Control-z>", lambda e: self._undo())
