@@ -572,8 +572,8 @@ class TaskFlowApp(ctk.CTk):
         self.side_hdr.pack(fill="x", padx=20, pady=(40, 30))
         
         self.btn_toggle = ctk.CTkButton(self.side_hdr, text="✕", width=40, height=40, corner_radius=10,
-                                        font=ctk.CTkFont(size=20), fg_color="transparent", 
-                                        text_color=self._c["text"], hover_color=self._c["accent_soft"],
+                                        font=ctk.CTkFont(size=18, weight="bold"), fg_color="#2D2D3E",
+                                        text_color="#A0A0C0", hover_color="#3A3A55",
                                         command=self._toggle_sidebar)
         self.btn_toggle.pack(side="left")
 
@@ -608,14 +608,17 @@ class TaskFlowApp(ctk.CTk):
         hdr_btns = ctk.CTkFrame(hdr_row, fg_color="transparent")
         hdr_btns.pack(side="right")
 
-        self.guide_btn = ctk.CTkButton(hdr_btns, text="?", width=42, height=42, corner_radius=12,
-                                       font=ctk.CTkFont(size=14, weight="bold"),
-                                       fg_color=self._c["accent_soft"], text_color=self._c["accent"],
+        self.guide_btn = ctk.CTkButton(hdr_btns, text="?", width=44, height=44, corner_radius=12,
+                                       font=ctk.CTkFont(size=16, weight="bold"),
+                                       fg_color="#3D2B6B", text_color="#C4A8FF",
+                                       hover_color="#4E3580",
                                        command=self._open_guide)
         self.guide_btn.pack(side="left", padx=5)
 
-        self.mode_btn = ctk.CTkButton(hdr_btns, text="☀️  Mode Toggle", width=130, height=42, corner_radius=12,
-                                      font=ctk.CTkFont(size=12, weight="bold"),
+        self.mode_btn = ctk.CTkButton(hdr_btns, text="☀️  Light / Dark", width=140, height=44, corner_radius=12,
+                                      font=ctk.CTkFont(size=13, weight="bold"),
+                                      fg_color="#1A4D4A", text_color="#7FFFD4",
+                                      hover_color="#1F5C58",
                                       command=self._toggle_mode)
         self.mode_btn.pack(side="left", padx=5)
         self.sub_text = ctk.CTkLabel(self.main, text="Here's what's on your agenda today.", font=ctk.CTkFont(size=16))
@@ -641,8 +644,11 @@ class TaskFlowApp(ctk.CTk):
         self.ent_task.bind("<Return>", lambda e: self._add())
         self.ent_task.bind("<KeyRelease>", lambda e: self._upd_cc())
 
-        self.btn_add = ctk.CTkButton(row1, text="＋  Add Task", width=120, height=48, corner_radius=12,
-                                     font=ctk.CTkFont(size=14, weight="bold"), command=self._add)
+        self.btn_add = ctk.CTkButton(row1, text="＋  Add Task", width=130, height=48, corner_radius=12,
+                                     font=ctk.CTkFont(size=15, weight="bold"),
+                                     fg_color="#14532D", text_color="#86EFAC",
+                                     hover_color="#166534",
+                                     command=self._add)
         self.btn_add.pack(side="right")
 
         row2 = ctk.CTkFrame(self.input_card, fg_color="transparent")
@@ -655,8 +661,11 @@ class TaskFlowApp(ctk.CTk):
         
         ctk.CTkLabel(row2, text="day/month", font=ctk.CTkFont(size=10), text_color=self._c["muted"]).pack(side="left", padx=(0, 12))
 
-        self.btn_cal = ctk.CTkButton(row2, text="📅 Picker", width=100, height=36, corner_radius=10,
-                                     font=ctk.CTkFont(size=12, weight="bold"), command=self._open_cal)
+        self.btn_cal = ctk.CTkButton(row2, text="📅  Pick Date", width=115, height=36, corner_radius=10,
+                                     font=ctk.CTkFont(size=12, weight="bold"),
+                                     fg_color="#1E3A5F", text_color="#93C5FD",
+                                     hover_color="#1E4976",
+                                     command=self._open_cal)
         self.btn_cal.pack(side="left", padx=(0, 12))
 
         self.lbl_cc = ctk.CTkLabel(row2, text="0 / 120", font=ctk.CTkFont(size=11))
@@ -696,20 +705,32 @@ class TaskFlowApp(ctk.CTk):
         self.action_fr = ctk.CTkFrame(self.bottom_fr, fg_color="transparent")
         self.action_fr.pack(fill="x")
 
-        self.btn_del = ctk.CTkButton(self.action_fr, text="🗑  Delete Selected", height=42, corner_radius=12,
-                                     font=ctk.CTkFont(size=13, weight="bold"), command=self._delete)
-        self.btn_del.pack(side="left", padx=(0, 10))
+        self.btn_del = ctk.CTkButton(self.action_fr, text="🗑  Delete", height=44, corner_radius=12,
+                                     font=ctk.CTkFont(size=14, weight="bold"),
+                                     fg_color="#7F1D1D", text_color="#FCA5A5",
+                                     hover_color="#991B1B",
+                                     command=self._delete)
+        self.btn_del.pack(side="left", padx=(0, 8))
 
-        self.btn_edit = ctk.CTkButton(self.action_fr, text="✏️  Edit Selected", height=42, corner_radius=12,
-                                      font=ctk.CTkFont(size=13, weight="bold"), command=self._edit)
-        self.btn_edit.pack(side="left", padx=(0, 10))
+        self.btn_edit = ctk.CTkButton(self.action_fr, text="✏️  Edit", height=44, corner_radius=12,
+                                      font=ctk.CTkFont(size=14, weight="bold"),
+                                      fg_color="#78350F", text_color="#FCD34D",
+                                      hover_color="#92400E",
+                                      command=self._edit)
+        self.btn_edit.pack(side="left", padx=(0, 8))
 
-        self.btn_undo = ctk.CTkButton(self.action_fr, text="↩  Undo Last", height=42, corner_radius=12,
-                                      font=ctk.CTkFont(size=13, weight="bold"), command=self._undo)
-        self.btn_undo.pack(side="left", padx=(0, 10))
+        self.btn_undo = ctk.CTkButton(self.action_fr, text="↩  Undo", height=44, corner_radius=12,
+                                      font=ctk.CTkFont(size=14, weight="bold"),
+                                      fg_color="#3B0764", text_color="#D8B4FE",
+                                      hover_color="#4C0A82",
+                                      command=self._undo)
+        self.btn_undo.pack(side="left", padx=(0, 8))
 
-        self.btn_clear = ctk.CTkButton(self.action_fr, text="🧹  Clear All", height=42, corner_radius=12,
-                                       font=ctk.CTkFont(size=13, weight="bold"), command=self._show_clear_dialog)
+        self.btn_clear = ctk.CTkButton(self.action_fr, text="🧹  Clear All", height=44, corner_radius=12,
+                                       font=ctk.CTkFont(size=14, weight="bold"),
+                                       fg_color="#450A0A", text_color="#FDA4AF",
+                                       hover_color="#5A0A0A",
+                                       command=self._show_clear_dialog)
         self.btn_clear.pack(side="right")
 
     # ═══════════════════  LOGIC HELPERS  ══════════════════════════════════
