@@ -255,7 +255,7 @@ class ToolTip:
                 
                 _ACTIVE_TIP = self
                 # Auto-hide after 3 s
-                self._hide_job = self.widget.after(3, self.hide)
+                self._hide_job = self.widget.after(3000, self.hide)
         except Exception as e:
             pass
 
