@@ -209,9 +209,13 @@ class ToolTip:
             if self.tip is not None:
                 self.tip.wm_overrideredirect(True)  # type: ignore[union-attr]
                 self.tip.geometry(f"+{x}+{y}")  # type: ignore[union-attr]
-                self.tip.configure(fg_color="#1A1A2E")  # type: ignore[union-attr]
+                # Adapt colour to current theme (light vs dark)
+                is_dark = ctk.get_appearance_mode().lower() == "dark"
+                tip_bg   = "#1A1A2E" if is_dark else "#1F2937"
+                tip_text = "#F3F4F6" if is_dark else "#FFFFFF"
+                self.tip.configure(fg_color=tip_bg)  # type: ignore[union-attr]
                 lbl = ctk.CTkLabel(
-                    self.tip, text=self.text, text_color="#F3F4F6",
+                    self.tip, text=self.text, text_color=tip_text,
                     font=ctk.CTkFont(size=11, weight="bold"),
                     corner_radius=8, padx=12, pady=6,
                 )
@@ -362,17 +366,20 @@ class UserGuidePopup(ctk.CTkToplevel):
         nav.pack(fill="x", padx=30, pady=(5, 25))
 
         self.btn_skip = ctk.CTkButton(nav, text="Skip Guide", width=100, height=42, corner_radius=12,
-                                       fg_color=palette["accent_soft"], text_color=palette["text_sec"],
+                                       fg_color="#2D2D3E", text_color="#A0A0C0",
+                                       hover_color="#3A3A55",
                                        font=ctk.CTkFont(size=12), command=self.destroy)
         self.btn_skip.pack(side="left")
 
         self.btn_next = ctk.CTkButton(nav, text="Next  ❯", width=140, height=42, corner_radius=12,
-                                       fg_color=palette["accent"], hover_color=palette["accent_h"],
+                                       fg_color="#14532D", text_color="#86EFAC",
+                                       hover_color="#166534",
                                        font=ctk.CTkFont(size=13, weight="bold"), command=self._next)
         self.btn_next.pack(side="right")
 
         self.btn_prev = ctk.CTkButton(nav, text="❮  Back", width=100, height=42, corner_radius=12,
-                                       fg_color=palette["accent_soft"], text_color=palette["accent"],
+                                       fg_color="#1E3A5F", text_color="#93C5FD",
+                                       hover_color="#1E4976",
                                        font=ctk.CTkFont(size=12), command=self._prev)
         self.btn_prev.pack(side="right", padx=(0, 10))
 
@@ -678,24 +685,46 @@ class TaskFlowApp(ctk.CTk):
         self.scroll = ctk.CTkScrollableFrame(scroll_container, fg_color="transparent")
         self.scroll.pack(side="left", fill="both", expand=True)
 
-        # Scroll Rail — arrows stacked tightly with scrollbar (Usability)
+        # ── Unified Scroll Rail: hide built-in scrollbar, stack ▲ + scrollbar + ▼ in one column ──
         self.scroll_nav = ctk.CTkFrame(scroll_container, fg_color=self._c["panel"],
-                                        width=36, corner_radius=10)
-        self.scroll_nav.pack(side="right", fill="y", padx=(4, 0), pady=4)
+                                        width=22, corner_radius=10)
+        self.scroll_nav.pack(side="right", fill="y", padx=(3, 0), pady=4)
         self.scroll_nav.pack_propagate(False)
 
-        ctk.CTkButton(self.scroll_nav, text="▲", width=30, height=30, corner_radius=6,
-                      fg_color=self._c["accent_soft"], text_color=self._c["accent"],
-                      hover_color=self._c["nav_active_bg"],
-                      command=lambda: self.scroll._parent_canvas.yview_scroll(-3, "units")).pack(pady=(4, 2))
+        # Hide the CTkScrollableFrame's built-in scrollbar so ours is the only one
+        try:
+            self.scroll._scrollbar.grid_remove()  # type: ignore[attr-defined]
+        except Exception:
+            pass
 
-        # Spacer to push ▼ to bottom
-        ctk.CTkFrame(self.scroll_nav, fg_color="transparent").pack(fill="both", expand=True)
+        # ▲ Up arrow button
+        self.scroll_btn_up = ctk.CTkButton(
+            self.scroll_nav, text="▲", width=18, height=26, corner_radius=6,
+            fg_color=self._c["accent_soft"], text_color=self._c["accent"],
+            hover_color=self._c["nav_active_bg"], font=ctk.CTkFont(size=10),
+            command=lambda: self.scroll._parent_canvas.yview_scroll(-3, "units")  # type: ignore[attr-defined]
+        )
+        self.scroll_btn_up.pack(pady=(4, 1), padx=2)
 
-        ctk.CTkButton(self.scroll_nav, text="▼", width=30, height=30, corner_radius=6,
-                      fg_color=self._c["accent_soft"], text_color=self._c["accent"],
-                      hover_color=self._c["nav_active_bg"],
-                      command=lambda: self.scroll._parent_canvas.yview_scroll(3, "units")).pack(pady=(2, 4))
+        # Native scrollbar widget sharing the same canvas — sits between the arrows
+        self.custom_sb = ctk.CTkScrollbar(
+            self.scroll_nav, orientation="vertical",
+            command=self.scroll._parent_canvas.yview  # type: ignore[attr-defined]
+        )
+        self.custom_sb.pack(fill="y", expand=True, pady=1, padx=2)
+        # Hook the canvas so dragging the scrollbar moves the list
+        self.scroll._parent_canvas.configure(  # type: ignore[attr-defined]
+            yscrollcommand=self.custom_sb.set
+        )
+
+        # ▼ Down arrow button
+        self.scroll_btn_dn = ctk.CTkButton(
+            self.scroll_nav, text="▼", width=18, height=26, corner_radius=6,
+            fg_color=self._c["accent_soft"], text_color=self._c["accent"],
+            hover_color=self._c["nav_active_bg"], font=ctk.CTkFont(size=10),
+            command=lambda: self.scroll._parent_canvas.yview_scroll(3, "units")  # type: ignore[attr-defined]
+        )
+        self.scroll_btn_dn.pack(pady=(1, 4), padx=2)
 
         # BOTTOM BAR (Feedback & User Control)
         self.bottom_fr = ctk.CTkFrame(self.main, fg_color="transparent")
@@ -901,12 +930,16 @@ class TaskFlowApp(ctk.CTk):
         self.ent_date.configure(fg_color=c["input_bg"], border_color=c["input_bd"], text_color=c["text"])
         self.scroll.configure(fg_color=c["bg"])
         self.scroll_nav.configure(fg_color=c["panel"])
-        for child in self.scroll_nav.winfo_children():
-            if hasattr(child, 'configure') and hasattr(child, 'cget'):
-                try:
-                    child.configure(fg_color=c["accent_soft"], text_color=c["accent"])  # type: ignore
-                except Exception:
-                    pass
+        # Update unified scroll rail widgets
+        try:
+            self.scroll_btn_up.configure(fg_color=c["accent_soft"], text_color=c["accent"],
+                                         hover_color=c["nav_active_bg"])
+            self.scroll_btn_dn.configure(fg_color=c["accent_soft"], text_color=c["accent"],
+                                         hover_color=c["nav_active_bg"])
+            self.custom_sb.configure(fg_color=c["panel"], button_color=c["accent"],
+                                     button_hover_color=c["accent_h"])
+        except Exception:
+            pass
         self.status_bar.configure(fg_color=c["panel"], border_color=c["border"])
         self.status_lbl.configure(text_color=c["text_sec"])
         # sidebar toggle only adjusts bg per theme, semantic text stays
