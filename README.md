@@ -22,8 +22,8 @@ Plus **13 Core UI/UX Heuristics**: Structure, Simplicity, Visibility, Feedback, 
 
 ### Features
 
-- 🎨 **Light & Dark themes** with smooth animated transitions
-- 📌 **Task filtering**: Today / Upcoming / All
+- ✅ **Mark as Done**: Interactive completion toggle with visual feedback (slanted text, muted colors)
+- 📌 **Task filtering**: Today / Upcoming / All / Completed
 - 📅 **Calendar popup** for deadline selection (DD/MM format)
 - ✏️ **Edit task popup** for focused modifications
 - 🗑️ **Undo support** for accidental deletions
@@ -42,7 +42,7 @@ Plus **13 Core UI/UX Heuristics**: Structure, Simplicity, Visibility, Feedback, 
 | `Ctrl+X` | Clear all tasks |
 | `E` | Edit selected task |
 | `Del` | Delete selected task |
-| `1` / `2` / `3` | Filter: Today / Upcoming / All |
+| `1` / `2` / `3` / `4` | Filter: Today / Upcoming / All / Completed |
 
 ### Requirements
 

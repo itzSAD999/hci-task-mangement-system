@@ -19,7 +19,7 @@ from __future__ import annotations
 import customtkinter as ctk  # type: ignore[import-not-found]
 import calendar as cal_mod
 from datetime import datetime, timedelta
-from typing import Callable, Optional
+from typing import Callable, Optional, Any
 import os
 try:
     from PIL import Image as _PILImage  # type: ignore[import-not-found]
@@ -29,7 +29,7 @@ except ImportError:
 
 # ─────────────────────────  DESIGN SYSTEM (Consistency & Aesthetics)  ─────
 
-LIGHT: dict[str, str] = {
+LIGHT: dict[str, Any] = {
     "bg": "#F8F9FD",           # Soft grayish blue
     "sidebar": "#FFFFFF",      # Clean white sidebar
     "panel": "#FFFFFF",        # Card surface
@@ -51,7 +51,7 @@ LIGHT: dict[str, str] = {
     "input_bd": "#ECEAF3",
 }
 
-DARK: dict[str, str] = {
+DARK: dict[str, Any] = {
     "bg": "#0B0A10",           # Deep dark
     "sidebar": "#15141B",      # Slightly lighter sidebar
     "panel": "#1C1B22",        # Card surface
@@ -88,7 +88,7 @@ def _parse_date(s: str) -> datetime | None:
         except ValueError: pass
     return None
 
-def _date_style(ds: str, c: dict[str, str]) -> tuple[str, str, str]:
+def _date_style(ds: str, c: dict[str, Any]) -> tuple[str, str, str]:
     d = _parse_date(ds)
     if d is None: return ("", "", "")
     today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -103,7 +103,7 @@ def _date_style(ds: str, c: dict[str, str]) -> tuple[str, str, str]:
 
 class CalendarPopup(ctk.CTkToplevel):
     """Refined Month-Grid date picker following dashboard aesthetics."""
-    def __init__(self, parent: ctk.CTk, palette: dict[str, str], callback: Callable[[str], None]):
+    def __init__(self, parent: ctk.CTk, palette: dict[str, Any], callback: Callable[[str], None]):
         super().__init__(parent) # type: ignore
         self.title("Select Due Date")
         self.geometry("340x420")
@@ -275,7 +275,7 @@ class ToolTip:
 
 class ClearConfirmPopup(ctk.CTkToplevel):
     """Modal confirmation for destructive actions (HCI Error Prevention)."""
-    def __init__(self, parent: ctk.CTk, palette: dict[str, str], callback: Callable[[], None]):
+    def __init__(self, parent: ctk.CTk, palette: dict[str, Any], callback: Callable[[], None]):
         super().__init__(parent) # type: ignore
         self.title("Confirm Action")
         self.geometry("400x260")
@@ -324,7 +324,7 @@ class ClearConfirmPopup(ctk.CTkToplevel):
 
 class UserGuidePopup(ctk.CTkToplevel):
     """Interactive 20-second guide (Learnability & Memorability)."""
-    def __init__(self, parent: ctk.CTk, palette: dict[str, str]):
+    def __init__(self, parent: ctk.CTk, palette: dict[str, Any]):
         super().__init__(parent)  # type: ignore
         self.title("Quick Start Guide")
         self.geometry("520x480")
@@ -457,9 +457,9 @@ class UserGuidePopup(ctk.CTkToplevel):
 
 class EditTaskPopup(ctk.CTkToplevel):
     """Redesigned edit modal — shows original desc, lets user revise all fields."""
-    def __init__(self, parent: ctk.CTk, palette: dict[str, str],
-                 task: dict[str, str],
-                 callback: Callable[[str, str, str, str], None]):
+    def __init__(self, parent: ctk.CTk, palette: dict[str, Any],
+                 task: dict[str, Any],
+                 callback: Callable[[str, str, str, str, bool], None]):
         super().__init__(parent)  # type: ignore
         self.title("Edit Task")
         self.geometry("520x560")
@@ -553,15 +553,16 @@ class EditTaskPopup(ctk.CTkToplevel):
         ctk.CTkLabel(time_row, text="→", font=ctk.CTkFont(size=16),
                      text_color=palette["muted"]).pack(side="left", padx=4)
 
-        self.ent_due = ctk.CTkEntry(
-            time_row, placeholder_text="e.g.  17:30",
-            placeholder_text_color=palette["muted"],
-            width=130, height=40, corner_radius=10, font=ctk.CTkFont(size=13),
-            fg_color=palette["input_bg"], border_color=palette["input_bd"],
-            text_color=palette["text"]
-        )
-        self.ent_due.pack(side="left", padx=(6, 0))
         self.ent_due.insert(0, task.get("due_time", ""))
+
+        # ─ Done status
+        self.var_done = ctk.BooleanVar(value=task.get("done", False))
+        self.chk_done = ctk.CTkCheckBox(self, text="Mark as Completed",
+                                         variable=self.var_done,
+                                         font=ctk.CTkFont(size=13, weight="bold"),
+                                         fg_color=palette["ok"], border_color=palette["muted"],
+                                         hover_color=palette["accent_h"])
+        self.chk_done.pack(pady=(0, 10))
 
         # ─ Buttons
         btn_row = ctk.CTkFrame(self, fg_color="transparent")
@@ -594,6 +595,7 @@ class EditTaskPopup(ctk.CTkToplevel):
         dt  = self.ent_date.get().strip()
         st  = self.ent_start.get().strip()
         due = self.ent_due.get().strip()
+        done = self.var_done.get()
         if not txt:
             self.lbl_hint.configure(text="⚠ Description cannot be empty.")
             self.ent_task.configure(border_color=self._c["err"])
@@ -602,7 +604,7 @@ class EditTaskPopup(ctk.CTkToplevel):
             self.lbl_hint.configure(text="⚠ Invalid date — use DD/MM (e.g. 25/06).")
             self.ent_date.configure(border_color=self._c["err"])
             return
-        self._cb(txt, dt, st, due)
+        self._cb(txt, dt, st, due, done)
         self.destroy()
 
 
@@ -620,8 +622,8 @@ class TaskFlowApp(ctk.CTk):
         self.minsize(860, 640)
         
         # State
-        self.tasks: list[dict[str, str]] = []
-        self.last_deleted: dict[str, str] | None = None
+        self.tasks: list[dict[str, Any]] = []
+        self.last_deleted: dict[str, Any] | None = None
         self.last_deleted_idx: int | None = None
         self._sel_idx: int | None = None # Index in current view
         self._filter = "today"
@@ -673,6 +675,7 @@ class TaskFlowApp(ctk.CTk):
         self.bind("1", lambda e: self._set_filter("today"))
         self.bind("2", lambda e: self._set_filter("upcoming"))
         self.bind("3", lambda e: self._set_filter("all"))
+        self.bind("4", lambda e: self._set_filter("completed"))
         self.bind("<Control-t>", lambda e: self._toggle_mode())
         self.bind("<Control-T>", lambda e: self._toggle_mode())
         self.bind("<Control-s>", lambda e: self._toggle_sidebar())
@@ -705,7 +708,12 @@ class TaskFlowApp(ctk.CTk):
 
         # Navigation (Efficiency)
         self.nav_btns = {}
-        self.nav_data = [("today", "Today", "📌"), ("upcoming", "Upcoming", "📆"), ("all", "All Tasks", "📋")]
+        self.nav_data = [
+            ("today", "Today", "📌"),
+            ("upcoming", "Upcoming", "📆"),
+            ("all", "All Tasks", "📋"),
+            ("completed", "Completed", "✅")
+        ]
         for key, text, ico in self.nav_data:
             btn = ctk.CTkButton(self.side, text=f"  {ico}  {text}", anchor="w", height=48, corner_radius=12,
                                 font=ctk.CTkFont(size=14, weight="bold"),
@@ -890,14 +898,24 @@ class TaskFlowApp(ctk.CTk):
 
     # ═══════════════════  LOGIC HELPERS  ══════════════════════════════════
 
-    def _get_filtered(self) -> list[tuple[int, dict[str, str]]]:
+    def _get_filtered(self) -> list[tuple[int, dict[str, Any]]]:
         res = []
         today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
         today_str = today.strftime("%d/%m")
         for i, t in enumerate(self.tasks):
+            done = t.get("done", False)
+            # If viewing Completed, only show done items
+            if self._filter == "completed":
+                if done: res.append((i, t))
+                continue
+                
+            # For other views, hide done items to keep focus on pending work
+            if done: continue
+            
             dt = _parse_date(t["date"]) if t["date"] else None
             is_today = (not t["date"]) or (today_str == t["date"][:5] if len(t["date"]) >= 5 else today_str == t["date"])
             is_future = dt is not None and dt > today
+            
             if self._filter == "all":
                 res.append((i, t))
             elif self._filter == "today" and is_today:
@@ -944,13 +962,22 @@ class TaskFlowApp(ctk.CTk):
             self._status("Invalid date format. Use DD/MM.", "err")
             return
         # Always add as new — editing is done via EditTaskPopup
-        self.tasks.append({"text": txt, "date": dt, "start_time": "", "due_time": ""})
+        self.tasks.append({"text": txt, "date": dt, "start_time": "", "due_time": "", "done": False})
         self.ent_task.delete(0, "end")
         self.ent_date.delete(0, "end")
         self._upd_cc()
         self._status(f"Added: {txt}", "ok")
         self._refresh()
         self._refresh_nav()
+
+    def _toggle_done(self, view_idx: int):
+        """Toggle completion status from card."""
+        filtered = self._get_filtered()
+        if view_idx >= len(filtered): return
+        real_idx, task = filtered[view_idx]
+        task["done"] = not task.get("done", False)
+        self._status(f"Task marked as {'Completed' if task['done'] else 'Active'}.", "ok")
+        self._refresh(); self._refresh_nav()
 
     def _edit(self, view_idx: int | None = None):
         """Enter edit mode for selected task or provided view index via focused popup."""
@@ -967,11 +994,13 @@ class TaskFlowApp(ctk.CTk):
         
         EditTaskPopup(self, self._c, task, self._on_edit_save)
 
-    def _on_edit_save(self, txt: str, dt: str, start_time: str, due_time: str):
+    def _on_edit_save(self, txt: str, dt: str, start_time: str, due_time: str, done: bool):
         idx = self._editing_idx
         if not isinstance(idx, int): return
+        if idx >= len(self.tasks): return # Safety check
         self.tasks[idx] = {"text": txt, "date": dt,
-                           "start_time": start_time, "due_time": due_time}
+                           "start_time": start_time, "due_time": due_time,
+                           "done": done}
         self._status(f"Updated: {txt}", "ok")
         self._editing_idx = None
         self._refresh(); self._refresh_nav()
@@ -1049,7 +1078,7 @@ class TaskFlowApp(ctk.CTk):
 
         self.after((steps + 1) * 25, _finish)
 
-    def _animate_step(self, c1: dict[str, str], c2: dict[str, str], f: float):
+    def _animate_step(self, c1: dict[str, Any], c2: dict[str, Any], f: float):
         def _interp(k: str) -> str:
             h1: str = str(c1[k])
             h2: str = str(c2[k])
@@ -1199,63 +1228,92 @@ class TaskFlowApp(ctk.CTk):
 
         for i, (ri, task) in enumerate(filtered):
             sel = (i == self._sel_idx)
-            card = ctk.CTkFrame(self.scroll, corner_radius=16, height=76, border_width=2 if sel else 1,
-                                fg_color=self._c["nav_active_bg"] if sel else self._c["panel"],
-                                border_color=self._c["accent"] if sel else self._c["border"])
+            done = task.get("done", False)
+            
+            # ── Card Body Style (Dimmed if done) ──
+            card_fg = self._c["nav_active_bg"] if sel else self._c["panel"]
+            card_bd = self._c["accent"] if sel else self._c["border"]
+            if done and not sel:
+                card_fg = self._c["bg"] # Blend into background
+
+            card = ctk.CTkFrame(self.scroll, corner_radius=16, height=80, border_width=2 if sel else 1,
+                                fg_color=card_fg, border_color=card_bd)
             card.pack(fill="x", pady=5, padx=4)
             card.pack_propagate(False)
 
-            # Left accent bar
-            acc = ctk.CTkFrame(card, width=5, corner_radius=3,
-                               fg_color=self._c["accent"] if sel else self._c["border"])
+            # Left accent bar (Green if done, Purple if active)
+            acc_color = self._c["ok"] if done else (self._c["accent"] if sel else self._c["border"])
+            acc = ctk.CTkFrame(card, width=5, corner_radius=3, fg_color=acc_color)
             acc.pack(side="left", fill="y", padx=(4, 0), pady=8)
 
-            # Selection icon
-            ico = "✔" if sel else "○"
-            ctk.CTkLabel(card, text=ico, font=ctk.CTkFont(size=16),
-                         text_color=self._c["accent"]).pack(side="left", padx=(12, 8))
+            # ── Done Toggle Button (Visual & Interactive) ──
+            # Premium checkmark toggle
+            done_ico = "✔" if done else ""
+            done_fg = "white" if done else "transparent"
+            done_bg = self._c["ok"] if done else "transparent"
+            done_bd = self._c["ok"] if done else self._c["muted"]
+            
+            btn_done = ctk.CTkLabel(card, text=done_ico, width=28, height=28, corner_radius=14,
+                                     font=ctk.CTkFont(size=14, weight="bold"),
+                                     fg_color=done_bg, text_color=done_fg)
+            btn_done.pack(side="left", padx=(12, 12))
+            # Wrap in a frame or just bind directly for click-to-toggle
+            btn_done.bind("<Button-1>", lambda e, idx=i: self._toggle_done(idx))
+            ToolTip(btn_done, "Mark as " + ("Active" if done else "Completed"))
 
-            # ── RIGHT SIDE: pack before text_col so it always gets space ──
+            # ── RIGHT SIDE (packed first) ──
             right_col = ctk.CTkFrame(card, fg_color="transparent")
             right_col.pack(side="right", padx=(4, 12))
 
-            # Date badge (leftmost in right_col)
+            # Date badge
             if task["date"]:
                 lb, bg, fg = _date_style(task["date"], self._c)
+                # Dim badge if done
+                if done: bg = self._c["border"]; fg = self._c["muted"]
                 bfr = ctk.CTkFrame(right_col, fg_color=bg, corner_radius=10)
                 bfr.pack(side="left", padx=(0, 8))
                 ctk.CTkLabel(bfr, text=lb, font=ctk.CTkFont(size=10, weight="bold"),
                              text_color=fg).pack(padx=8, pady=4)
 
-            # Edit button — amber, clearly visible on dark & light
+            # Edit button
             btn_edit_card = ctk.CTkButton(
                 right_col, text="✏", width=34, height=34, corner_radius=8,
                 font=ctk.CTkFont(size=14, weight="bold"),
-                fg_color="#B45309", text_color="#FEF3C7", hover_color="#D97706",
+                fg_color="#B45309" if not done else self._c["border"], 
+                text_color="#FEF3C7" if not done else self._c["muted"], 
+                hover_color="#D97706",
                 command=lambda idx=i: self._edit(idx)
             )
             btn_edit_card.pack(side="left", padx=(0, 4))
             ToolTip(btn_edit_card, "Edit Task")
 
-            # Delete button — red, clearly visible on dark & light
+            # Delete button
             btn_del_card = ctk.CTkButton(
                 right_col, text="🗑", width=34, height=34, corner_radius=8,
                 font=ctk.CTkFont(size=14, weight="bold"),
-                fg_color="#B91C1C", text_color="#FEE2E2", hover_color="#DC2626",
+                fg_color="#B91C1C" if not done else self._c["border"], 
+                text_color="#FEE2E2" if not done else self._c["muted"], 
+                hover_color="#DC2626",
                 command=lambda idx=i: self._delete_at(idx)
             )
             btn_del_card.pack(side="left")
-            ToolTip(btn_del_card, "Delete Task (Ctrl+Z to undo)")
+            ToolTip(btn_del_card, "Delete Task")
 
-            # Task text + times — fills remaining space
+            # ── Task Text & Times ──
             text_col = ctk.CTkFrame(card, fg_color="transparent")
             text_col.pack(side="left", fill="both", expand=True)
 
-            ctk.CTkLabel(text_col, text=task["text"],
-                         font=ctk.CTkFont(size=13, weight="bold" if sel else "normal"),
-                         text_color=self._c["text"], anchor="w").pack(anchor="w")
+            # Slanted & Muted if done
+            t_font = ctk.CTkFont(size=13, 
+                                 weight="bold" if sel else "normal",
+                                 slant="italic" if done else "roman")
+            t_color = self._c["muted"] if done else self._c["text"]
+            
+            lbl_txt = ctk.CTkLabel(text_col, text=task["text"], font=t_font,
+                                   text_color=t_color, anchor="w")
+            lbl_txt.pack(anchor="w")
 
-            # Show start/due times if set
+            # Show times
             times_str = ""
             if task.get("start_time") and task.get("due_time"):
                 times_str = f"⏱ {task['start_time']}  →  {task['due_time']}"
@@ -1263,19 +1321,21 @@ class TaskFlowApp(ctk.CTk):
                 times_str = f"▶ Start: {task['start_time']}"
             elif task.get("due_time"):
                 times_str = f"⏰ Due: {task['due_time']}"
+            
             if times_str:
                 ctk.CTkLabel(text_col, text=times_str,
-                             font=ctk.CTkFont(size=10), text_color=self._c["muted"],
+                             font=ctk.CTkFont(size=10), 
+                             text_color=self._c["muted"],
                              anchor="w").pack(anchor="w")
 
-            # Interaction bindings on card body
-            for w in [card, acc, text_col]:
+            # Body bindings
+            for w in [card, acc, text_col, lbl_txt]:
                 w.bind("<Button-1>", lambda e, idx=i: self._on_card_click(idx))
                 w.bind("<Double-Button-1>", lambda e, idx=i: self._edit(idx))
-                w.bind("<Enter>", lambda e, c=card, s=sel: c.configure(
+                w.bind("<Enter>", lambda e, c=card, s=sel, d=done: c.configure(
                     fg_color=self._c["card_hover"] if not s else self._c["nav_active_bg"]))
-                w.bind("<Leave>", lambda e, c=card, s=sel: c.configure(
-                    fg_color=self._c["panel"] if not s else self._c["nav_active_bg"]))
+                w.bind("<Leave>", lambda e, c=card, s=sel, d=done: c.configure(
+                    fg_color=(self._c["nav_active_bg"] if s else (self._c["bg"] if d else self._c["panel"]))))
 
         self._ctrls()
 
