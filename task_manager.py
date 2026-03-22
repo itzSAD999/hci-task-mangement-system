@@ -38,7 +38,7 @@ LIGHT: dict[str, Any] = {
     "accent_soft": "#F0EEFF",  # Tone for badges
     "text": "#1A1A2E",         # High contrast title
     "text_sec": "#6B7280",     # Muted body
-    "muted": "#9CA3AF",        # Muted hints
+    "muted": "#6B7280",        # Muted hints (high contrast on light bg)
     "border": "#E5E7EB",       # Subtle dividers
     "ok": "#10B981", "ok_bg": "#ECFDF5",
     "err": "#EF4444", "err_bg": "#FEF2F2",
@@ -60,7 +60,7 @@ DARK: dict[str, Any] = {
     "accent_soft": "#2D2B3D",
     "text": "#F3F4F6",
     "text_sec": "#9CA3AF",
-    "muted": "#6B6A80",
+    "muted": "#8B8B9B",        # Visible placeholder text on dark input_bg
     "border": "#2D2D35",
     "ok": "#34D399", "ok_bg": "#064E3B",
     "err": "#F87171", "err_bg": "#450A0A",
@@ -1056,66 +1056,16 @@ class TaskFlowApp(ctk.CTk):
     # ═══════════════════  THEMING & UI REFRESH  ═══════════════════════════
 
     def _toggle_mode(self):
-        old_c = self._c
         self._is_dark = not self._is_dark
         self._c = DARK if self._is_dark else LIGHT
-        # Update button label immediately — do NOT call set_appearance_mode yet
-        # (calling it at start causes an instant flash before animation runs)
+        
+        # Native, polished instant switch to avoid layout recalculation tears and huge white spaces
+        ctk.set_appearance_mode("dark" if self._is_dark else "light")
         self.mode_btn.configure(text="☀️  Light Mode" if self._is_dark else "🌙  Dark Mode")
-
-        # 20-step cubic ease-in-out over 500ms
-        steps = 20
-        for i in range(1, steps + 1):
-            raw = i / steps
-            t   = raw * raw * (3.0 - 2.0 * raw)   # smooth-step
-            self.after(i * 25, lambda f=t: self._animate_step(old_c, self._c, f))
-
-        # At the very end: let CTK finalise appearance, then do a clean full repaint
-        def _finish():
-            ctk.set_appearance_mode("dark" if self._is_dark else "light")
-            self._apply_theme()
-            self._refresh()
-
-        self.after((steps + 1) * 25, _finish)
-
-    def _animate_step(self, c1: dict[str, Any], c2: dict[str, Any], f: float):
-        def _interp(k: str) -> str:
-            h1: str = str(c1[k])
-            h2: str = str(c2[k])
-            rgb1 = (int(h1[1:3], 16), int(h1[3:5], 16), int(h1[5:7], 16))  # type: ignore[index]
-            rgb2 = (int(h2[1:3], 16), int(h2[3:5], 16), int(h2[5:7], 16))  # type: ignore[index]
-            res = tuple(max(0, min(255, int(rgb1[j] + (rgb2[j] - rgb1[j]) * f))) for j in range(3))
-            return '#%02x%02x%02x' % res
-
-        try:
-            bg   = _interp("bg")
-            side = _interp("sidebar")
-            pan  = _interp("panel")
-            brd  = _interp("border")
-            txt  = _interp("text")
-            tsec = _interp("text_sec")
-            acc  = _interp("accent_soft")
-
-            self.configure(fg_color=bg)
-            self.side.configure(fg_color=side)
-            self.side_hdr.configure(fg_color=side)
-            self.main.configure(fg_color=bg)
-            self.scroll.configure(fg_color=bg)
-            self.input_card.configure(fg_color=pan, border_color=brd)
-            self.status_bar.configure(fg_color=pan, border_color=brd)
-            self.greeting.configure(text_color=txt)
-            self.sub_text.configure(text_color=tsec)
-            self.status_lbl.configure(text_color=tsec)
-            self.ent_task.configure(fg_color=_interp("input_bg"), border_color=_interp("input_bd"),
-                                    text_color=txt)
-            self.ent_date.configure(fg_color=_interp("input_bg"), border_color=_interp("input_bd"),
-                                    text_color=txt)
-            self.scroll_nav.configure(fg_color=pan)
-            # Nav buttons
-            for btn in self.nav_btns.values():
-                btn.configure(fg_color=acc)
-        except Exception:
-            pass
+        self._apply_theme()
+        
+        # A single post-theme-switch refresh stabilizes frame rendering
+        self.after(50, lambda: [self._refresh(), self._refresh_nav()])
 
     def _apply_theme(self):
         c = self._c
@@ -1205,8 +1155,8 @@ class TaskFlowApp(ctk.CTk):
             # ── Empty state: clipboard illustration + message ──
             empty_fr = ctk.CTkFrame(self.scroll, fg_color="transparent")
             empty_fr.pack(expand=True, pady=50)
-            # Load clipboard image if PIL is available
-            _img_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "clipboard.png")
+            # Load transparent clipboard image if PIL is available
+            _img_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "clipboard_trans.png")
             if _PIL_OK and os.path.exists(_img_path):
                 try:
                     pil_img = _PILImage.open(_img_path).resize((120, 120), _PILImage.LANCZOS)  # type: ignore[attr-defined]
