@@ -450,77 +450,120 @@ class UserGuidePopup(ctk.CTkToplevel):
             self._render()
 
 class EditTaskPopup(ctk.CTkToplevel):
-    """Modern modal for editing tasks (Focused Flow)."""
-    def __init__(self, parent: ctk.CTk, palette: dict[str, str], task: dict[str, str], callback: Callable[[str, str], None]):
-        super().__init__(parent) # type: ignore
+    """Redesigned edit modal — shows original desc, lets user revise all fields."""
+    def __init__(self, parent: ctk.CTk, palette: dict[str, str],
+                 task: dict[str, str],
+                 callback: Callable[[str, str, str, str], None]):
+        super().__init__(parent)  # type: ignore
         self.title("Edit Task")
-        self.geometry("480x400")
+        self.geometry("520x560")
         self.resizable(False, False)
         self.transient(parent)
         self.grab_set()
-
-        self._c = palette
+        self._c  = palette
         self._cb = callback
         self.configure(fg_color=palette["panel"])
 
-        # ─ Header ──────────────────────────────────────────
+        # ─ Header
         ctk.CTkLabel(self, text="✏️  Edit Task",
                      font=ctk.CTkFont(size=22, weight="bold"),
-                     text_color=palette["text"]).pack(pady=(30, 4))
-        ctk.CTkLabel(self, text="Make your changes below and click  Save  when done.",
-                     font=ctk.CTkFont(size=12), text_color=palette["text_sec"]).pack(pady=(0, 18))
+                     text_color=palette["text"]).pack(pady=(28, 2))
+        ctk.CTkLabel(self, text="Update the fields below and press  Save  when done.",
+                     font=ctk.CTkFont(size=12), text_color=palette["text_sec"]).pack(pady=(0, 12))
+        ctk.CTkFrame(self, height=1, fg_color=palette["border"]).pack(fill="x", padx=36, pady=(0, 14))
 
-        # ─ Divider ────────────────────────────────────────
-        ctk.CTkFrame(self, height=1, fg_color=palette["border"]).pack(fill="x", padx=40, pady=(0, 18))
+        # ─ Original description (read-only)
+        ctk.CTkLabel(self, text="Original Description",
+                     font=ctk.CTkFont(size=10, weight="bold"),
+                     text_color=palette["muted"], anchor="w").pack(anchor="w", padx=42)
+        orig = ctk.CTkEntry(self, width=430, height=38, corner_radius=10,
+                            font=ctk.CTkFont(size=12), state="disabled",
+                            fg_color=palette["accent_soft"],
+                            border_color=palette["border"],
+                            text_color=palette["text_sec"])
+        orig.pack(pady=(3, 12))
+        orig.configure(state="normal")
+        orig.insert(0, task["text"])
+        orig.configure(state="disabled")
 
-        # ─ Task Description Field ─────────────────────────
-        ctk.CTkLabel(self, text="Task Description",
-                     font=ctk.CTkFont(size=11, weight="bold"),
-                     text_color=palette["muted"], anchor="w").pack(anchor="w", padx=48, pady=(0, 3))
-        self.ent_task = ctk.CTkEntry(self, width=384, height=50, corner_radius=12,
-                                     font=ctk.CTkFont(size=14),
-                                     fg_color=palette["input_bg"],
-                                     border_color=palette["input_bd"],
-                                     text_color=palette["text"])
-        self.ent_task.pack(pady=(0, 4))
+        # ─ New description
+        ctk.CTkLabel(self, text="New Description",
+                     font=ctk.CTkFont(size=10, weight="bold"),
+                     text_color=palette["muted"], anchor="w").pack(anchor="w", padx=42)
+        self.ent_task = ctk.CTkEntry(
+            self, width=430, height=46, corner_radius=12,
+            font=ctk.CTkFont(size=14),
+            placeholder_text="Enter updated task description...",
+            placeholder_text_color=palette["muted"],
+            fg_color=palette["input_bg"], border_color=palette["input_bd"],
+            text_color=palette["text"]
+        )
+        self.ent_task.pack(pady=(3, 2))
         self.ent_task.insert(0, task["text"])
         self.ent_task.focus_set()
         self.ent_task.bind("<Return>", lambda e: self._save())
 
-        # Validation hint
         self.lbl_hint = ctk.CTkLabel(self, text="", font=ctk.CTkFont(size=10, slant="italic"),
                                      text_color=palette["err"])
-        self.lbl_hint.pack(pady=(0, 4))
+        self.lbl_hint.pack(pady=(0, 6))
 
-        # ─ Deadline Field ──────────────────────────────
-        ctk.CTkLabel(self, text="Deadline  (DD/MM format or leave blank)",
-                     font=ctk.CTkFont(size=11, weight="bold"),
-                     text_color=palette["muted"], anchor="w").pack(anchor="w", padx=48, pady=(6, 3))
-        date_fr = ctk.CTkFrame(self, fg_color="transparent")
-        date_fr.pack(pady=(0, 4))
-
-        self.ent_date = ctk.CTkEntry(date_fr, placeholder_text="DD/MM", width=130, height=42,
-                                     corner_radius=10, font=ctk.CTkFont(size=13),
-                                     fg_color=palette["input_bg"],
-                                     border_color=palette["input_bd"],
-                                     text_color=palette["text"])
-        self.ent_date.pack(side="left", padx=(0, 10))
-        self.ent_date.insert(0, task["date"])
-
-        ctk.CTkButton(date_fr, text="📅  Pick Date", width=120, height=42, corner_radius=10,
+        # ─ Date row
+        ctk.CTkLabel(self, text="Deadline  (DD/MM  or leave blank)",
+                     font=ctk.CTkFont(size=10, weight="bold"),
+                     text_color=palette["muted"], anchor="w").pack(anchor="w", padx=42)
+        date_row = ctk.CTkFrame(self, fg_color="transparent")
+        date_row.pack(pady=(3, 10))
+        self.ent_date = ctk.CTkEntry(
+            date_row, placeholder_text="e.g.  25/06",
+            placeholder_text_color=palette["muted"],
+            width=130, height=40, corner_radius=10,
+            font=ctk.CTkFont(size=13),
+            fg_color=palette["input_bg"], border_color=palette["input_bd"],
+            text_color=palette["text"]
+        )
+        self.ent_date.pack(side="left", padx=(0, 8))
+        self.ent_date.insert(0, task.get("date", ""))
+        ctk.CTkButton(date_row, text="📅  Pick", width=100, height=40, corner_radius=10,
                       font=ctk.CTkFont(size=12, weight="bold"),
                       fg_color="#1E3A5F", text_color="#93C5FD", hover_color="#1E4976",
                       command=self._open_cal).pack(side="left")
 
-        # ─ Action Buttons ─────────────────────────────
-        btn_row = ctk.CTkFrame(self, fg_color="transparent")
-        btn_row.pack(pady=(20, 30))
+        # ─ Time row
+        ctk.CTkLabel(self, text="Start Time  →  Due Time  (HH:MM 24h  or leave blank)",
+                     font=ctk.CTkFont(size=10, weight="bold"),
+                     text_color=palette["muted"], anchor="w").pack(anchor="w", padx=42)
+        time_row = ctk.CTkFrame(self, fg_color="transparent")
+        time_row.pack(pady=(3, 14))
+        self.ent_start = ctk.CTkEntry(
+            time_row, placeholder_text="e.g.  09:00",
+            placeholder_text_color=palette["muted"],
+            width=130, height=40, corner_radius=10, font=ctk.CTkFont(size=13),
+            fg_color=palette["input_bg"], border_color=palette["input_bd"],
+            text_color=palette["text"]
+        )
+        self.ent_start.pack(side="left", padx=(0, 6))
+        self.ent_start.insert(0, task.get("start_time", ""))
 
-        ctk.CTkButton(btn_row, text="✔  Save Changes", width=170, height=48, corner_radius=12,
+        ctk.CTkLabel(time_row, text="→", font=ctk.CTkFont(size=16),
+                     text_color=palette["muted"]).pack(side="left", padx=4)
+
+        self.ent_due = ctk.CTkEntry(
+            time_row, placeholder_text="e.g.  17:30",
+            placeholder_text_color=palette["muted"],
+            width=130, height=40, corner_radius=10, font=ctk.CTkFont(size=13),
+            fg_color=palette["input_bg"], border_color=palette["input_bd"],
+            text_color=palette["text"]
+        )
+        self.ent_due.pack(side="left", padx=(6, 0))
+        self.ent_due.insert(0, task.get("due_time", ""))
+
+        # ─ Buttons
+        btn_row = ctk.CTkFrame(self, fg_color="transparent")
+        btn_row.pack(pady=(4, 24))
+        ctk.CTkButton(btn_row, text="✔  Save Changes", width=175, height=48, corner_radius=12,
                       font=ctk.CTkFont(size=14, weight="bold"),
                       fg_color="#14532D", text_color="#86EFAC", hover_color="#166534",
                       command=self._save).pack(side="left", padx=10)
-
         ctk.CTkButton(btn_row, text="Cancel", width=110, height=48, corner_radius=12,
                       font=ctk.CTkFont(size=13),
                       fg_color="#2D2D3E", text_color="#A0A0C0", hover_color="#3A3A55",
@@ -541,16 +584,19 @@ class EditTaskPopup(ctk.CTkToplevel):
         CalendarPopup(self, self._c, on_picked)
 
     def _save(self):
-        txt, dt = self.ent_task.get().strip(), self.ent_date.get().strip()
+        txt = self.ent_task.get().strip()
+        dt  = self.ent_date.get().strip()
+        st  = self.ent_start.get().strip()
+        due = self.ent_due.get().strip()
         if not txt:
-            self.lbl_hint.configure(text="⚠ Task description cannot be empty.")
+            self.lbl_hint.configure(text="⚠ Description cannot be empty.")
             self.ent_task.configure(border_color=self._c["err"])
             return
         if dt and not _parse_date(dt):
-            self.lbl_hint.configure(text="⚠ Invalid date. Use DD/MM format (e.g. 25/06).")
+            self.lbl_hint.configure(text="⚠ Invalid date — use DD/MM (e.g. 25/06).")
             self.ent_date.configure(border_color=self._c["err"])
             return
-        self._cb(txt, dt)
+        self._cb(txt, dt, st, due)
         self.destroy()
 
 
@@ -840,12 +886,18 @@ class TaskFlowApp(ctk.CTk):
 
     def _get_filtered(self) -> list[tuple[int, dict[str, str]]]:
         res = []
-        today_str = datetime.now().strftime("%d/%m")
+        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        today_str = today.strftime("%d/%m")
         for i, t in enumerate(self.tasks):
-            is_today = (not t["date"]) or (today_str == t["date"])
-            if self._filter == "all": res.append((i, t))
-            elif self._filter == "today" and is_today: res.append((i, t))
-            elif self._filter == "upcoming" and not is_today: res.append((i, t))
+            dt = _parse_date(t["date"]) if t["date"] else None
+            is_today = (not t["date"]) or (today_str == t["date"][:5] if len(t["date"]) >= 5 else today_str == t["date"])
+            is_future = dt is not None and dt > today
+            if self._filter == "all":
+                res.append((i, t))
+            elif self._filter == "today" and is_today:
+                res.append((i, t))
+            elif self._filter == "upcoming" and is_future:  # strictly future only
+                res.append((i, t))
         return res
 
     def _status(self, msg: str, kind: str = "info"):
@@ -874,25 +926,25 @@ class TaskFlowApp(ctk.CTk):
         self._refresh_nav()
 
     def _add(self):
-        txt, dt = self.ent_task.get().strip(), self.ent_date.get().strip()
-        if not txt: self._status("Please enter a task description.", "err"); return
-        if len(txt) > self.MAX_LEN: self._status("Task too long.", "err"); return
-        if dt and not _parse_date(dt): self._status("Invalid date format. Use DD/MM.", "err"); return
-        
-        idx = self._editing_idx
-        if isinstance(idx, int):
-            # Update existing
-            self.tasks[idx] = {"text": txt, "date": dt}
-            self._status(f"Updated task: {txt}", "ok")
-            self._cancel_edit()
-        else:
-            # Add new
-            self.tasks.append({"text": txt, "date": dt})
-            self.ent_task.delete(0, "end"); self.ent_date.delete(0, "end")
-            self._upd_cc()
-            self._status(f"Added task: {txt}", "ok")
-        
-        self._refresh(); self._refresh_nav()
+        txt = self.ent_task.get().strip()
+        dt  = self.ent_date.get().strip()
+        if not txt:
+            self._status("Please enter a task description.", "err")
+            return
+        if len(txt) > self.MAX_LEN:
+            self._status("Task too long.", "err")
+            return
+        if dt and not _parse_date(dt):
+            self._status("Invalid date format. Use DD/MM.", "err")
+            return
+        # Always add as new — editing is done via EditTaskPopup
+        self.tasks.append({"text": txt, "date": dt, "start_time": "", "due_time": ""})
+        self.ent_task.delete(0, "end")
+        self.ent_date.delete(0, "end")
+        self._upd_cc()
+        self._status(f"Added: {txt}", "ok")
+        self._refresh()
+        self._refresh_nav()
 
     def _edit(self, view_idx: int | None = None):
         """Enter edit mode for selected task or provided view index via focused popup."""
@@ -909,11 +961,12 @@ class TaskFlowApp(ctk.CTk):
         
         EditTaskPopup(self, self._c, task, self._on_edit_save)
 
-    def _on_edit_save(self, txt: str, dt: str):
+    def _on_edit_save(self, txt: str, dt: str, start_time: str, due_time: str):
         idx = self._editing_idx
         if not isinstance(idx, int): return
-        self.tasks[idx] = {"text": txt, "date": dt}
-        self._status(f"Updated task: {txt}", "ok")
+        self.tasks[idx] = {"text": txt, "date": dt,
+                           "start_time": start_time, "due_time": due_time}
+        self._status(f"Updated: {txt}", "ok")
         self._editing_idx = None
         self._refresh(); self._refresh_nav()
 
@@ -928,6 +981,18 @@ class TaskFlowApp(ctk.CTk):
         self.last_deleted_idx = real_idx
         self._sel_idx = None
         self._status(f"Deleted task: {task['text']}", "info")
+        self._refresh(); self._refresh_nav()
+
+    def _delete_at(self, view_idx: int):
+        """Delete by view index — used by inline card trash buttons."""
+        filtered = self._get_filtered()
+        if view_idx >= len(filtered): return
+        real_idx, task = filtered[view_idx]
+        self.last_deleted = self.tasks.pop(real_idx)
+        self.last_deleted_idx = real_idx
+        if self._sel_idx == view_idx:
+            self._sel_idx = None
+        self._status(f"Deleted: {task['text']}", "info")
         self._refresh(); self._refresh_nav()
 
     def _undo(self):
@@ -1108,45 +1173,80 @@ class TaskFlowApp(ctk.CTk):
 
         for i, (ri, task) in enumerate(filtered):
             sel = (i == self._sel_idx)
-            card = ctk.CTkFrame(self.scroll, corner_radius=16, height=64, border_width=2 if sel else 1,
+            card = ctk.CTkFrame(self.scroll, corner_radius=16, height=70, border_width=2 if sel else 1,
                                 fg_color=self._c["nav_active_bg"] if sel else self._c["panel"],
                                 border_color=self._c["accent"] if sel else self._c["border"])
             card.pack(fill="x", pady=5, padx=4)
             card.pack_propagate(False)
 
-            # Left Accent Bar (Effectiveness — visual hierarchy)
+            # Left accent bar
             acc = ctk.CTkFrame(card, width=5, corner_radius=3,
                                fg_color=self._c["accent"] if sel else self._c["border"])
-            acc.pack(side="left", fill="y", padx=(4, 0), pady=6)
+            acc.pack(side="left", fill="y", padx=(4, 0), pady=8)
 
-            # Selection Icon (Memorability — consistent visual language)
+            # Selection icon
             ico = "✔" if sel else "○"
-            ctk.CTkLabel(card, text=ico, font=ctk.CTkFont(size=18),
-                         text_color=self._c["accent"]).pack(side="left", padx=(14, 10))
+            ctk.CTkLabel(card, text=ico, font=ctk.CTkFont(size=16),
+                         text_color=self._c["accent"]).pack(side="left", padx=(12, 8))
 
-            # Task Text — LEFT ALIGNED (Effectiveness — scannable list)
-            ctk.CTkLabel(card, text=task["text"],
-                         font=ctk.CTkFont(size=14, weight="bold" if sel else "normal"),
-                         text_color=self._c["text"],
-                         anchor="w").pack(side="left", fill="x", expand=True, anchor="w")
+            # Task text + times
+            text_col = ctk.CTkFrame(card, fg_color="transparent")
+            text_col.pack(side="left", fill="both", expand=True)
 
-            # Date Badge — right side (Functionality — at-a-glance deadline)
+            ctk.CTkLabel(text_col, text=task["text"],
+                         font=ctk.CTkFont(size=13, weight="bold" if sel else "normal"),
+                         text_color=self._c["text"], anchor="w").pack(anchor="w")
+
+            # Show start/due times if set
+            times_str = ""
+            if task.get("start_time") and task.get("due_time"):
+                times_str = f"⏱ {task['start_time']}  →  {task['due_time']}"
+            elif task.get("start_time"):
+                times_str = f"▶ Start: {task['start_time']}"
+            elif task.get("due_time"):
+                times_str = f"⏰ Due: {task['due_time']}"
+            if times_str:
+                ctk.CTkLabel(text_col, text=times_str,
+                             font=ctk.CTkFont(size=10), text_color=self._c["muted"],
+                             anchor="w").pack(anchor="w")
+
+            # ── Right-side: date badge + action icons ──
+            right_col = ctk.CTkFrame(card, fg_color="transparent")
+            right_col.pack(side="right", padx=(0, 10), pady=8)
+
+            # Inline Edit icon button
+            ctk.CTkButton(
+                right_col, text="✏", width=28, height=28, corner_radius=8,
+                font=ctk.CTkFont(size=12),
+                fg_color="#78350F", text_color="#FCD34D", hover_color="#92400E",
+                command=lambda idx=i: self._edit(idx)
+            ).pack(side="right", padx=(4, 0))
+
+            # Inline Delete icon button
+            ctk.CTkButton(
+                right_col, text="🗑", width=28, height=28, corner_radius=8,
+                font=ctk.CTkFont(size=12),
+                fg_color="#7F1D1D", text_color="#FCA5A5", hover_color="#991B1B",
+                command=lambda idx=i: self._delete_at(idx)
+            ).pack(side="right", padx=(4, 0))
+
+            # Date badge
             if task["date"]:
                 lb, bg, fg = _date_style(task["date"], self._c)
-                bfr = ctk.CTkFrame(card, fg_color=bg, corner_radius=10)
-                bfr.pack(side="right", padx=(10, 16), pady=14)
-                ctk.CTkLabel(bfr, text=lb, font=ctk.CTkFont(size=11, weight="bold"),
-                             text_color=fg).pack(padx=10, pady=3)
+                bfr = ctk.CTkFrame(right_col, fg_color=bg, corner_radius=10)
+                bfr.pack(side="right", padx=(0, 4))
+                ctk.CTkLabel(bfr, text=lb, font=ctk.CTkFont(size=10, weight="bold"),
+                             text_color=fg).pack(padx=8, pady=3)
 
-            # Interaction Bindings (Satisfaction — responsive hover feedback)
-            for w in [card, acc]:
+            # Interaction bindings
+            for w in [card, acc, text_col]:
                 w.bind("<Button-1>", lambda e, idx=i: self._on_card_click(idx))
                 w.bind("<Double-Button-1>", lambda e, idx=i: self._edit(idx))
                 w.bind("<Enter>", lambda e, c=card, s=sel: c.configure(
                     fg_color=self._c["card_hover"] if not s else self._c["nav_active_bg"]))
                 w.bind("<Leave>", lambda e, c=card, s=sel: c.configure(
                     fg_color=self._c["panel"] if not s else self._c["nav_active_bg"]))
-        
+
         self._ctrls()
 
     def _on_card_click(self, idx: int):
