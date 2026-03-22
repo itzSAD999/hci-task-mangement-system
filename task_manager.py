@@ -193,17 +193,34 @@ class CalendarPopup(ctk.CTkToplevel):
 _ACTIVE_TIP: Optional["ToolTip"] = None
 
 class ToolTip:
-    """Single-instance tooltip (Efficiency — hides on leave, max one at a time)."""
+    """Deferred tooltip — only shows after 400ms hover, hides instantly on leave."""
     def __init__(self, widget: ctk.CTkBaseClass, text: str):
         self.widget = widget
-        self.text = text
+        self.text   = text
         self.tip: Optional[ctk.CTkToplevel] = None
-        self._timer_id: Optional[str] = None
-        self.widget.bind("<Enter>", lambda e: self.show())
+        self._show_job: Optional[str] = None   # pending deferred show
+        self._hide_job: Optional[str] = None   # pending auto-hide
+        self.widget.bind("<Enter>", lambda e: self._schedule_show())
         self.widget.bind("<Leave>", lambda e: self.hide())
 
-    def show(self):
+    # ---- internal ----
+    def _schedule_show(self):
+        """Wait 400ms before showing so quick mouse passes don't trigger it."""
+        self._cancel_show()          # reset any pending show
+        self._show_job = self.widget.after(400, self._do_show)
+
+    def _cancel_show(self):
+        if self._show_job:
+            try:
+                self.widget.after_cancel(self._show_job)
+            except Exception:
+                pass
+            self._show_job = None
+
+    def _do_show(self):
+        """Actually build and display the tooltip window."""
         global _ACTIVE_TIP
+        self._show_job = None
         # Hide any other visible tooltip first
         if _ACTIVE_TIP is not None and _ACTIVE_TIP is not self:
             _ACTIVE_TIP.hide()
@@ -216,7 +233,6 @@ class ToolTip:
             if self.tip is not None:
                 self.tip.wm_overrideredirect(True)  # type: ignore[union-attr]
                 self.tip.geometry(f"+{x}+{y}")       # type: ignore[union-attr]
-                # Adapt colours to current theme
                 is_dark = ctk.get_appearance_mode().lower() == "dark"
                 tip_bg   = "#1A1A2E" if is_dark else "#1F2937"
                 tip_text = "#F3F4F6" if is_dark else "#FFFFFF"
@@ -225,25 +241,26 @@ class ToolTip:
                     self.tip, text=self.text, text_color=tip_text,
                     font=ctk.CTkFont(size=11, weight="bold"),
                     corner_radius=8, padx=12, pady=6,
-                    wraplength=300,   # prevent mid-word splits
+                    wraplength=300,
                 ).pack()
                 _ACTIVE_TIP = self
-                # Auto-hide after 3 s (Efficiency)
-                self._timer_id = self.widget.after(3000, self.hide)
+                # Auto-hide after 3 s
+                self._hide_job = self.widget.after(3000, self.hide)
         except Exception:
             pass
 
     def hide(self):
         global _ACTIVE_TIP
-        if self._timer_id:
+        self._cancel_show()          # if still waiting to show, abort
+        if self._hide_job:
             try:
-                self.widget.after_cancel(self._timer_id)
+                self.widget.after_cancel(self._hide_job)
             except Exception:
                 pass
-            self._timer_id = None
+            self._hide_job = None
         if self.tip:
             try:
-                self.tip.destroy()  # type: ignore[union-attr]
+                self.tip.destroy()   # type: ignore[union-attr]
             except Exception:
                 pass
             self.tip = None
@@ -942,18 +959,24 @@ class TaskFlowApp(ctk.CTk):
         old_c = self._c
         self._is_dark = not self._is_dark
         self._c = DARK if self._is_dark else LIGHT
-        ctk.set_appearance_mode("dark" if self._is_dark else "light")
+        # Update button label immediately — do NOT call set_appearance_mode yet
+        # (calling it at start causes an instant flash before animation runs)
         self.mode_btn.configure(text="☀️  Light Mode" if self._is_dark else "🌙  Dark Mode")
 
-        # Smooth eased transition: 16 steps @ 30ms = ~480ms total
-        steps = 16
+        # 20-step cubic ease-in-out over 500ms
+        steps = 20
         for i in range(1, steps + 1):
-            # Cubic ease-in-out: t^2 * (3 - 2t)
             raw = i / steps
-            t = raw * raw * (3 - 2 * raw)
-            self.after(i * 30, lambda f=t: self._animate_step(old_c, self._c, f))
+            t   = raw * raw * (3.0 - 2.0 * raw)   # smooth-step
+            self.after(i * 25, lambda f=t: self._animate_step(old_c, self._c, f))
 
-        self.after((steps + 1) * 30, lambda: (self._apply_theme(), self._refresh()))
+        # At the very end: let CTK finalise appearance, then do a clean full repaint
+        def _finish():
+            ctk.set_appearance_mode("dark" if self._is_dark else "light")
+            self._apply_theme()
+            self._refresh()
+
+        self.after((steps + 1) * 25, _finish)
 
     def _animate_step(self, c1: dict[str, str], c2: dict[str, str], f: float):
         def _interp(k: str) -> str:
