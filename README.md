@@ -47,7 +47,7 @@ Plus **13 Core UI/UX Heuristics**: Structure, Simplicity, Visibility, Feedback, 
 ### Requirements
 
 ```
-pip install customtkinter
+pip install customtkinter Pillow
 ```
 
 ### Run
