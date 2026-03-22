@@ -233,6 +233,8 @@ class ToolTip:
         if self.tip or not self.text:
             return
         try:
+            if not self.widget.winfo_exists():
+                return
             x = self.widget.winfo_rootx() + 20
             y = self.widget.winfo_rooty() + self.widget.winfo_height() + 6
             self.tip = ctk.CTkToplevel(self.widget)
@@ -243,16 +245,18 @@ class ToolTip:
                 tip_bg   = "#1A1A2E" if is_dark else "#1F2937"
                 tip_text = "#F3F4F6" if is_dark else "#FFFFFF"
                 self.tip.configure(fg_color=tip_bg)   # type: ignore[union-attr]
+                
+                # Use standard kwargs; padding moves to pack()
                 ctk.CTkLabel(
                     self.tip, text=self.text, text_color=tip_text,
                     font=ctk.CTkFont(size=11, weight="bold"),
-                    corner_radius=8, padx=12, pady=6,
-                    wraplength=300,
-                ).pack()
+                    corner_radius=8
+                ).pack(padx=12, pady=6)
+                
                 _ACTIVE_TIP = self
                 # Auto-hide after 3 s
                 self._hide_job = self.widget.after(3000, self.hide)
-        except Exception:
+        except Exception as e:
             pass
 
     def hide(self):
