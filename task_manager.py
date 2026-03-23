@@ -31,6 +31,7 @@ except ImportError:
 # ─────────────────────────  DESIGN SYSTEM (Consistency & Aesthetics)  ─────
 
 LIGHT: dict[str, Any] = {
+    
     "bg": "#F8F9FD",           # Soft grayish blue
     "sidebar": "#FFFFFF",      # Clean white sidebar
     "panel": "#FFFFFF",        # Card surface
@@ -632,6 +633,14 @@ class TaskFlowApp(ctk.CTk):
         self.geometry("1024x740")
         self.minsize(860, 640)
         
+        # Set Application Icon
+        try:
+            icon_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "clipboard.png")
+            if os.path.exists(icon_path):
+                self.iconphoto(True, tk.PhotoImage(file=icon_path))
+        except Exception:
+            pass
+        
         # State
         self.tasks: list[dict[str, Any]] = []
         self.last_deleted: dict[str, Any] | None = None
@@ -808,17 +817,37 @@ class TaskFlowApp(ctk.CTk):
             text_color=self._c["text"],
             placeholder_text_color=self._c["muted"]
         )
-        self.ent_date.pack(side="left", padx=(0, 8))
+        self.ent_date.pack(side="left", padx=(0, 6))
         self.ent_date.bind("<Return>", lambda e: self._add())
         
-        ctk.CTkLabel(row2, text="day/month", font=ctk.CTkFont(size=10), text_color=self._c["muted"]).pack(side="left", padx=(0, 12))
-
-        self.btn_cal = ctk.CTkButton(row2, text="📅  Pick Date", width=115, height=36, corner_radius=10,
+        self.btn_cal = ctk.CTkButton(row2, text="📅  Pick", width=90, height=36, corner_radius=10,
                                      font=ctk.CTkFont(size=12, weight="bold"),
                                      fg_color="#1E3A5F", text_color="#93C5FD",
                                      hover_color="#1E4976",
                                      command=self._open_cal)
-        self.btn_cal.pack(side="left", padx=(0, 12))
+        self.btn_cal.pack(side="left", padx=(0, 15))
+
+        self.ent_start = ctk.CTkEntry(
+            row2, placeholder_text="Start HH:MM", width=100, height=36, corner_radius=10,
+            font=ctk.CTkFont(size=12),
+            fg_color=self._c["input_bg"], border_color=self._c["input_bd"],
+            text_color=self._c["text"],
+            placeholder_text_color=self._c["muted"]
+        )
+        self.ent_start.pack(side="left", padx=(0, 6))
+        self.ent_start.bind("<Return>", lambda e: self._add())
+
+        ctk.CTkLabel(row2, text="→", font=ctk.CTkFont(size=14), text_color=self._c["muted"]).pack(side="left", padx=(0, 6))
+
+        self.ent_due = ctk.CTkEntry(
+            row2, placeholder_text="Due HH:MM", width=100, height=36, corner_radius=10,
+            font=ctk.CTkFont(size=12),
+            fg_color=self._c["input_bg"], border_color=self._c["input_bd"],
+            text_color=self._c["text"],
+            placeholder_text_color=self._c["muted"]
+        )
+        self.ent_due.pack(side="left", padx=(0, 15))
+        self.ent_due.bind("<Return>", lambda e: self._add())
 
         self.lbl_cc = ctk.CTkLabel(row2, text="0 / 120", font=ctk.CTkFont(size=11))
         self.lbl_cc.pack(side="right")
@@ -937,6 +966,10 @@ class TaskFlowApp(ctk.CTk):
                 res.append((i, t))
             elif self._filter == "upcoming" and is_future:  # strictly future only
                 res.append((i, t))
+                
+        if self._filter == "upcoming":
+            res.sort(key=lambda item: _parse_date(item[1].get("date", "")) or datetime.max)
+            
         return res
 
     def _status(self, msg: str, kind: str = "info"):
@@ -967,6 +1000,9 @@ class TaskFlowApp(ctk.CTk):
     def _add(self):
         txt = self.ent_task.get().strip()
         dt  = self.ent_date.get().strip()
+        st_val = self.ent_start.get().strip()
+        due_val = self.ent_due.get().strip()
+        
         if not txt:
             self._status("Please enter a task description.", "err")
             return
@@ -977,9 +1013,14 @@ class TaskFlowApp(ctk.CTk):
             self._status("Invalid date format. Use DD/MM.", "err")
             return
         # Always add as new — editing is done via EditTaskPopup
-        self.tasks.append({"text": txt, "date": dt, "start_time": "", "due_time": "", "done": False})
+        self.tasks.append({
+            "text": txt, "date": dt,
+            "start_time": st_val, "due_time": due_val, "done": False
+        })
         self.ent_task.delete(0, "end")
         self.ent_date.delete(0, "end")
+        self.ent_start.delete(0, "end")
+        self.ent_due.delete(0, "end")
         self._upd_cc()
         self._status(f"Added: {txt}", "ok")
         self._refresh()
@@ -997,7 +1038,10 @@ class TaskFlowApp(ctk.CTk):
     def _edit(self, view_idx: int | None = None):
         """Enter edit mode for selected task or provided view index via focused popup."""
         if view_idx is None:
-            view_idx = self._sel_idx
+            if len(self._sel_indices) != 1:
+                self._status("Please select exactly one task to edit.", "err")
+                return
+            view_idx = next(iter(self._sel_indices))
         
         if view_idx is None: return
         
@@ -1097,6 +1141,11 @@ class TaskFlowApp(ctk.CTk):
                                 text_color=c["text"], placeholder_text_color=c["muted"])
         self.ent_date.configure(fg_color=c["input_bg"], border_color=c["input_bd"],
                                 text_color=c["text"], placeholder_text_color=c["muted"])
+        if hasattr(self, "ent_start"):
+            self.ent_start.configure(fg_color=c["input_bg"], border_color=c["input_bd"],
+                                     text_color=c["text"], placeholder_text_color=c["muted"])
+            self.ent_due.configure(fg_color=c["input_bg"], border_color=c["input_bd"],
+                                   text_color=c["text"], placeholder_text_color=c["muted"])
         self.scroll.configure(fg_color=c["bg"])
         self.scroll_nav.configure(fg_color=c["panel"])
         # Update unified scroll rail widgets
